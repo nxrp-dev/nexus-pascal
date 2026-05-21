@@ -556,7 +556,7 @@
     "build-base": "esbuild ./out/extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.2.5",
+    "fast-xml-parser": "^5.8.0",
     "vscode-languageclient": "^8.0.1"
   },
   "devDependencies": {
