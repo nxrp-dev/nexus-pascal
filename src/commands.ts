@@ -6,7 +6,7 @@ import path = require('path');
 import { BuildMode, FpcTask, taskProvider } from './providers/task';
 import { client } from './extension';
 import { TextEditor, TextEditorEdit } from 'vscode';
-import { ProjectTemplateManager, ProjectTemplate } from './providers/projectTemplate';
+import { ProjectTemplateManager } from './providers/projectTemplate';
 import { LazarusBuildModeTask } from './providers/lazarusBuildModeTask';
 
 export class FpcCommandManager {
@@ -36,9 +36,6 @@ export class FpcCommandManager {
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.opensetting', this.ProjectOpen));
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.newproject', this.ProjectNew));
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.newfromtemplate', this.NewProjectFromTemplate));
-        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.inittemplatedir', this.InitializeTemplateDirectory));
-        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.inittemplatedirtouser', this.InitializeTemplateDirectoryToUser));
-        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.opentemplatedir', this.OpenTemplateDirectory));
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.add', this.ProjectAdd));
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.setdefault', this.projectSetDefault));
         context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.openWithLazarus', this.openWithLazarus));
@@ -253,44 +250,12 @@ export class FpcCommandManager {
 
     ProjectNew = async () => {
         try {
-            const templates = await this.templateManager.getAvailableTemplates();
-            
-            if (templates.length === 0) {
-                const initChoice = await vscode.window.showInformationMessage(
-                    'No project templates found. Would you like to initialize the default template directory?',
-                    'Initialize Templates', 'Cancel'
-                );
-                
-                if (initChoice === 'Initialize Templates') {
-                    await this.InitializeTemplateDirectory();
-                    // 重新获取模板
-                    const newTemplates = await this.templateManager.getAvailableTemplates();
-                    if (newTemplates.length > 0) {
-                        await this.showTemplateSelection(newTemplates);
-                    }
-                }
+            const selectedTemplate = await this.templateManager.selectTemplate();
+
+            if (!selectedTemplate) {
                 return;
             }
-            
-            await this.showTemplateSelection(templates);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to load project templates: ${error}`);
-        }
-    };
 
-    private async showTemplateSelection(templates: ProjectTemplate[]): Promise<void> {
-        const templateItems = templates.map(template => ({
-            label: template.name,
-            description: template.description,
-            template: template
-        }));
-
-        const selected = await vscode.window.showQuickPick(templateItems, {
-            placeHolder: 'Select a project template'
-        });
-
-        if (selected) {
-            // 询问项目名称
             const projectName = await vscode.window.showInputBox({
                 prompt: 'Enter project name',
                 value: 'newproject',
@@ -298,7 +263,6 @@ export class FpcCommandManager {
                     if (!value || value.trim().length === 0) {
                         return 'Project name cannot be empty';
                     }
-                    // 检查是否包含非法字符
                     if (!/^[a-zA-Z0-9_-]+$/.test(value.trim())) {
                         return 'Project name can only contain letters, numbers, underscores and hyphens';
                     }
@@ -307,39 +271,15 @@ export class FpcCommandManager {
             });
 
             if (projectName) {
-                await this.templateManager.createProjectFromTemplate(selected.template, projectName.trim());
+                await this.templateManager.createProjectFromTemplate(selectedTemplate, projectName.trim());
             }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to create project from starter: ${error}`);
         }
-    }
+    };
 
     NewProjectFromTemplate = async () => {
         await this.ProjectNew();
-    };
-
-    InitializeTemplateDirectory = async () => {
-        try {
-            await this.templateManager.initializeDefaultTemplates(false);
-            vscode.window.showInformationMessage('Template directory initialized successfully!');
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to initialize template directory: ${error}`);
-        }
-    };
-
-    InitializeTemplateDirectoryToUser = async () => {
-        try {
-            await this.templateManager.initializeDefaultTemplates(true);
-            vscode.window.showInformationMessage('User template directory initialized successfully!');
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to initialize user template directory: ${error}`);
-        }
-    };
-
-    OpenTemplateDirectory = async () => {
-        try {
-            await this.templateManager.openTemplateDirectory();
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to open template directory: ${error}`);
-        }
     };
 
     projectSetDefault = async (node: FpcItem) => {

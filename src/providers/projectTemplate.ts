@@ -5,454 +5,299 @@ import * as path from 'path';
 export interface ProjectTemplate {
     name: string;
     description: string;
-    files: TemplateFile[];
-    tasks?: any[];
+    sourcePath: string;
 }
 
-export interface TemplateFile {
-    path: string;
-    content: string;
-    cursorPosition?: { line: number; column: number };
+interface ProjectTemplateNode {
+    name: string;
+    description: string;
+    sourcePath: string;
+    isTemplate: boolean;
+}
+
+interface ProjectTemplatePickItem extends vscode.QuickPickItem {
+    node?: ProjectTemplateNode;
+    isBack?: boolean;
 }
 
 export class ProjectTemplateManager {
-    private static readonly DEFAULT_TEMPLATE_DIR = 'templates';
-    private workspaceRoot: string;
+    private static readonly TEMPLATE_ROOT = 'templates';
 
-    constructor(workspaceRoot: string) {
-        this.workspaceRoot = workspaceRoot;
+    constructor(private readonly workspaceRoot: string) {
     }
 
-    /**
-     * Get template directory paths
-     */
-    private getTemplateDirectories(): string[] {
-        const config = vscode.workspace.getConfiguration('nexusPascal');
-        const customTemplateDirs = config.get<string[]>('project.templateDirectories', []);
-        
-        const directories: string[] = [];
-        
-        // Add user global template directory
-        const userTemplateDir = this.getUserTemplateDirectory();
-        if (fs.existsSync(userTemplateDir)) {
-            directories.push(userTemplateDir);
+    public async selectTemplate(): Promise<ProjectTemplate | undefined> {
+        const templateRoot = this.getTemplateRoot();
+
+        if (!templateRoot || !fs.existsSync(templateRoot)) {
+            return undefined;
         }
-        
-        // Add custom template directories
-        for (const dir of customTemplateDirs) {
-            if (path.isAbsolute(dir)) {
-                directories.push(dir);
-            } else {
-                directories.push(path.join(this.workspaceRoot, dir));
+
+        let currentDir = templateRoot;
+
+        while (true) {
+            const nodes = this.getChildNodes(templateRoot, currentDir);
+            const items: ProjectTemplatePickItem[] = nodes.map(node => ({
+                label: node.name,
+                description: node.isTemplate ? 'Starter' : 'Category',
+                detail: node.description,
+                node: node
+            }));
+
+            if (currentDir !== templateRoot) {
+                items.unshift({
+                    label: '$(arrow-left) Back',
+                    isBack: true
+                });
+            }
+
+            if (items.length === 0) {
+                return undefined;
+            }
+
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: this.getPlaceHolder(templateRoot, currentDir)
+            });
+
+            if (!selected) {
+                return undefined;
+            }
+
+            if (selected.isBack) {
+                currentDir = path.dirname(currentDir);
+                continue;
+            }
+
+            if (!selected.node) {
+                return undefined;
+            }
+
+            if (selected.node.isTemplate) {
+                return {
+                    name: selected.node.name,
+                    description: selected.node.description,
+                    sourcePath: selected.node.sourcePath
+                };
+            }
+
+            currentDir = selected.node.sourcePath;
+        }
+    }
+
+    public async getAvailableTemplates(): Promise<ProjectTemplate[]> {
+        const templateRoot = this.getTemplateRoot();
+
+        if (!templateRoot || !fs.existsSync(templateRoot)) {
+            return [];
+        }
+
+        return this.findTemplates(templateRoot, templateRoot);
+    }
+
+    public async createProjectFromTemplate(template: ProjectTemplate, projectName?: string, targetDir?: string): Promise<void> {
+        const projectDir = targetDir || this.workspaceRoot;
+        const replacementValues = {
+            PROJECT_NAME: projectName || 'newproject'
+        };
+
+        const collisions = this.findCollisions(template.sourcePath, projectDir, replacementValues);
+        if (collisions.length > 0) {
+            const choice = await vscode.window.showWarningMessage(
+                `${collisions.length} file(s) already exist. Overwrite them?`,
+                'Overwrite',
+                'Cancel'
+            );
+
+            if (choice !== 'Overwrite') {
+                return;
             }
         }
-        
-        // Add workspace default template directory (backward compatibility)
-        const defaultDir = path.join(this.workspaceRoot, ProjectTemplateManager.DEFAULT_TEMPLATE_DIR);
-        if (fs.existsSync(defaultDir) && !directories.includes(defaultDir)) {
-            directories.push(defaultDir);
-        }
-        
-        return directories;
+
+        this.copyTemplateDirectory(template.sourcePath, projectDir, replacementValues);
+        await this.openFirstSourceFile(template.sourcePath, projectDir, replacementValues);
+
+        vscode.window.showInformationMessage(`Project created from starter: ${template.name}`);
     }
 
-    /**
-     * Get user global template directory
-     */
-    private getUserTemplateDirectory(): string {
-        const os = require('os');
-        return path.join(os.homedir(), '.nexus-pascal', 'templates');
-    }
-
-    /**
-     * Get all available project templates
-     */
-    async getAvailableTemplates(): Promise<ProjectTemplate[]> {
-        const templates: ProjectTemplate[] = [];
-        
-        // First scan external template directories
-        const templateDirs = this.getTemplateDirectories();
-        
-        for (const templateDir of templateDirs) {
-            if (fs.existsSync(templateDir)) {
-                const templateFolders = fs.readdirSync(templateDir, { withFileTypes: true })
-                    .filter(dirent => dirent.isDirectory())
-                    .map(dirent => dirent.name);
-                
-                for (const templateFolder of templateFolders) {
-                    const templatePath = path.join(templateDir, templateFolder);
-                    const template = await this.loadTemplate(templatePath);
-                    if (template) {
-                        templates.push(template);
-                    }
-                }
-            }
-        }
-        
-        // If no external templates found, try to load built-in templates from extension
-        if (templates.length === 0) {
-            const builtInTemplates = await this.loadBuiltInTemplates();
-            templates.push(...builtInTemplates);
-        }
-        
-        // If no templates found at all, use fallback default template
-        if (templates.length === 0) {
-            templates.push(this.getDefaultFpcTemplate());
-        }
-        
-        return templates;
-    }
-
-    /**
-     * Load built-in templates from extension
-     */
-    private async loadBuiltInTemplates(): Promise<ProjectTemplate[]> {
-        const templates: ProjectTemplate[] = [];
-        
+    private getTemplateRoot(): string | undefined {
         const extensionPath = vscode.extensions.getExtension('nxrp-dev.nexus-pascal')?.extensionPath;
+
         if (!extensionPath) {
-            return templates;
+            return undefined;
         }
-        
-        const extensionTemplateDir = path.join(extensionPath, ProjectTemplateManager.DEFAULT_TEMPLATE_DIR);
-        if (!fs.existsSync(extensionTemplateDir)) {
-            return templates;
-        }
-        
-        try {
-            const templateFolders = fs.readdirSync(extensionTemplateDir, { withFileTypes: true })
-                .filter(dirent => dirent.isDirectory())
-                .map(dirent => dirent.name);
-            
-            for (const templateFolder of templateFolders) {
-                const templatePath = path.join(extensionTemplateDir, templateFolder);
-                const template = await this.loadTemplate(templatePath);
-                if (template) {
-                    templates.push(template);
-                }
+
+        return path.join(extensionPath, ProjectTemplateManager.TEMPLATE_ROOT);
+    }
+
+    private getChildNodes(templateRoot: string, currentDir: string): ProjectTemplateNode[] {
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        const directories = entries.filter(entry => entry.isDirectory());
+        const nodes = directories.map(directory => {
+            const sourcePath = path.join(currentDir, directory.name);
+            const relativePath = path.relative(templateRoot, sourcePath);
+
+            return {
+                name: this.toFriendlyName(directory.name),
+                description: relativePath.split(path.sep).map(part => this.toFriendlyName(part)).join(' / '),
+                sourcePath: sourcePath,
+                isTemplate: this.hasDirectTemplateFiles(sourcePath)
+            };
+        });
+
+        nodes.sort((left, right) => {
+            if (left.isTemplate !== right.isTemplate) {
+                return left.isTemplate ? 1 : -1;
             }
-        } catch (error) {
-            console.error(`Failed to load built-in templates from ${extensionTemplateDir}:`, error);
+
+            return left.name.localeCompare(right.name);
+        });
+
+        return nodes;
+    }
+
+    private findTemplates(templateRoot: string, currentDir: string): ProjectTemplate[] {
+        const templates: ProjectTemplate[] = [];
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        const directories = entries.filter(entry => entry.isDirectory());
+
+        for (const directory of directories) {
+            const sourcePath = path.join(currentDir, directory.name);
+
+            if (this.hasDirectTemplateFiles(sourcePath)) {
+                const relativePath = path.relative(templateRoot, sourcePath);
+                const pathParts = relativePath.split(path.sep).filter(part => part.length > 0);
+                const templateFolderName = pathParts[pathParts.length - 1] || path.basename(sourcePath);
+                const categoryParts = pathParts.slice(0, -1).map(part => this.toFriendlyName(part));
+
+                templates.push({
+                    name: this.toFriendlyName(templateFolderName),
+                    description: categoryParts.join(' / '),
+                    sourcePath: sourcePath
+                });
+            } else {
+                templates.push(...this.findTemplates(templateRoot, sourcePath));
+            }
         }
-        
+
+        templates.sort((left, right) => {
+            const leftName = `${left.description}/${left.name}`;
+            const rightName = `${right.description}/${right.name}`;
+            return leftName.localeCompare(rightName);
+        });
+
         return templates;
     }
 
-    /**
-     * Get default FPC project template (ultimate fallback)
-     */
-    private getDefaultFpcTemplate(): ProjectTemplate {
-        return {
-            name: 'New FPC Project',
-            description: 'Create a standard FPC project with main.lpr',
-            files: [
-                {
-                    path: 'main.lpr',
-                    content: `program main;
-{$mode objfpc}{$H+}
-uses
-  classes,sysutils;
-begin 
-   
-end.`,
-                    cursorPosition: { line: 5, column: 4 }
-                }
-            ],
-            tasks: [
-                {
-                    "label": "debug",
-                    "file": "main.lpr",
-                    "type": "fpc",
-                    "presentation": {
-                        "showReuseMessage": false,
-                        "clear": true,
-                        "revealProblems": "onProblem"
-                    },
-                    "buildOption": {
-                        "unitOutputDir": "./out"
-                    }
-                }
-            ]
-        };
+    private hasDirectTemplateFiles(directoryPath: string): boolean {
+        const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+        return entries.some(entry => entry.isFile() && entry.name.toLowerCase() !== 'template.json');
     }
 
-    /**
-     * Load template from directory
-     */
-    private async loadTemplate(templatePath: string): Promise<ProjectTemplate | null> {
-        try {
-            const configPath = path.join(templatePath, 'template.json');
-            if (!fs.existsSync(configPath)) {
-                return null;
+    private findCollisions(sourceDir: string, targetDir: string, replacementValues: Record<string, string>): string[] {
+        const collisions: string[] = [];
+        this.walkTemplateFiles(sourceDir, sourceDir, (sourceFile, relativePath) => {
+            const targetPath = path.join(targetDir, this.applyTemplateValues(relativePath, replacementValues));
+            if (fs.existsSync(targetPath)) {
+                collisions.push(targetPath);
             }
+        });
+        return collisions;
+    }
 
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            const config = JSON.parse(configContent);
+    private copyTemplateDirectory(sourceDir: string, targetDir: string, replacementValues: Record<string, string>): void {
+        this.walkTemplateFiles(sourceDir, sourceDir, (sourceFile, relativePath) => {
+            const targetPath = path.join(targetDir, this.applyTemplateValues(relativePath, replacementValues));
+            fs.mkdirSync(path.dirname(targetPath), { recursive: true });
 
-            const template: ProjectTemplate = {
-                name: config.name || path.basename(templatePath),
-                description: config.description || '',
-                files: [],
-                tasks: config.tasks
-            };
-
-            // Load template files
-            if (config.files && Array.isArray(config.files)) {
-                for (const fileConfig of config.files) {
-                    const filePath = path.join(templatePath, fileConfig.source);
-                    if (fs.existsSync(filePath)) {
-                        let content = fs.readFileSync(filePath, 'utf8');
-                        
-                        template.files.push({
-                            path: fileConfig.target || fileConfig.source,
-                            content: content,
-                            cursorPosition: fileConfig.cursorPosition
-                        });
-                    }
-                }
+            if (this.isTextFile(sourceFile)) {
+                const content = fs.readFileSync(sourceFile, 'utf8');
+                fs.writeFileSync(targetPath, this.applyTemplateValues(content, replacementValues), 'utf8');
+            } else {
+                fs.copyFileSync(sourceFile, targetPath);
             }
+        });
+    }
 
-            return template;
-        } catch (error) {
-            console.error(`Failed to load template from ${templatePath}:`, error);
-            return null;
+    private walkTemplateFiles(rootDir: string, currentDir: string, callback: (sourceFile: string, relativePath: string) => void): void {
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+        for (const entry of entries) {
+            const sourcePath = path.join(currentDir, entry.name);
+            const relativePath = path.relative(rootDir, sourcePath);
+
+            if (entry.isDirectory()) {
+                this.walkTemplateFiles(rootDir, sourcePath, callback);
+            } else if (entry.isFile() && entry.name.toLowerCase() !== 'template.json') {
+                callback(sourcePath, relativePath);
+            }
         }
     }
 
-    /**
-     * Process template variables
-     */
-    private processTemplateVariables(content: string, projectName?: string): string {
-        const now = new Date();
-        const variables: { [key: string]: string } = {
-            '{{DATE}}': now.toLocaleDateString(),
-            '{{TIME}}': now.toLocaleTimeString(),
-            '{{YEAR}}': now.getFullYear().toString(),
-            '{{MONTH}}': (now.getMonth() + 1).toString().padStart(2, '0'),
-            '{{DAY}}': now.getDate().toString().padStart(2, '0'),
-            '{{USER}}': process.env.USER || process.env.USERNAME || 'User',
-            '{{PROJECT_NAME}}': projectName || 'newproject'
-        };
+    private async openFirstSourceFile(sourceDir: string, targetDir: string, replacementValues: Record<string, string>): Promise<void> {
+        const sourceFiles: string[] = [];
 
-        let result = content;
-        for (const [variable, value] of Object.entries(variables)) {
-            result = result.replace(new RegExp(variable, 'g'), value);
+        this.walkTemplateFiles(sourceDir, sourceDir, (sourceFile, relativePath) => {
+            if (this.isPascalSourceFile(sourceFile)) {
+                sourceFiles.push(this.applyTemplateValues(relativePath, replacementValues));
+            }
+        });
+
+        if (sourceFiles.length === 0) {
+            return;
+        }
+
+        sourceFiles.sort((left, right) => {
+            if (left.toLowerCase().endsWith('.lpr')) {
+                return -1;
+            }
+            if (right.toLowerCase().endsWith('.lpr')) {
+                return 1;
+            }
+            return left.localeCompare(right);
+        });
+
+        const document = await vscode.workspace.openTextDocument(path.join(targetDir, sourceFiles[0]));
+        await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+    }
+
+    private applyTemplateValues(value: string, replacementValues: Record<string, string>): string {
+        let result = value;
+
+        for (const [name, replacement] of Object.entries(replacementValues)) {
+            result = result.replace(new RegExp(`\\{\\{${name}\\}\\}`, 'g'), replacement);
         }
 
         return result;
     }
 
-    /**
-     * Create project from template
-     */
-    async createProjectFromTemplate(template: ProjectTemplate, projectName?: string, targetDir?: string): Promise<void> {
-        try {
-            const finalProjectName = projectName || 'newproject';
-            const projectDir = targetDir || this.workspaceRoot;
-            
-            // Create files
-            for (const file of template.files) {
-                let content = file.content;
-                let targetPath = file.path;
-                
-                // Process template variables
-                content = this.processTemplateVariables(content, finalProjectName);
-                targetPath = this.processTemplateVariables(targetPath, finalProjectName);
-                
-                const filePath = path.join(projectDir, targetPath);
-                const fileDir = path.dirname(filePath);
-                
-                fs.mkdirSync(fileDir, { recursive: true });
-                fs.writeFileSync(filePath, content);
-            }
+    private getPlaceHolder(templateRoot: string, currentDir: string): string {
+        const relativePath = path.relative(templateRoot, currentDir);
 
-            // Add task configuration
-            if (template.tasks && template.tasks.length > 0) {
-                // Process variables in tasks
-                const processedTasks = template.tasks.map(task => {
-                    const processedTask = JSON.parse(JSON.stringify(task)); // Deep copy
-                    if (processedTask.file) {
-                        processedTask.file = this.processTemplateVariables(processedTask.file, finalProjectName);
-                    }
-                    return processedTask;
-                });
-                await this.addTasksToWorkspace(processedTasks, projectDir);
-            }
-
-            // Open main file
-            const mainFile = template.files.find(f => 
-                f.cursorPosition || 
-                f.path.endsWith('.lpr') || 
-                f.path.endsWith('.dpr') || 
-                f.path.endsWith('.pas')
-            );
-
-            if (mainFile) {
-                const targetPath = this.processTemplateVariables(mainFile.path, finalProjectName);
-                const filePath = path.join(projectDir, targetPath);
-                const doc = await vscode.workspace.openTextDocument(filePath);
-                const editor = await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
-                
-                if (mainFile.cursorPosition) {
-                    const pos = new vscode.Position(mainFile.cursorPosition.line, mainFile.cursorPosition.column);
-                    editor.selection = new vscode.Selection(pos, pos);
-                }
-            }
-
-            vscode.window.showInformationMessage(`Project "${finalProjectName}" created from template: ${template.name}`);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to create project from template: ${error}`);
+        if (!relativePath) {
+            return 'Select a project starter category';
         }
+
+        return `Select from ${relativePath.split(path.sep).map(part => this.toFriendlyName(part)).join(' / ')}`;
     }
 
-    /**
-     * Add tasks to workspace
-     */
-    private async addTasksToWorkspace(tasks: any[], projectDir?: string): Promise<void> {
-        const workspaceDir = projectDir || this.workspaceRoot;
-        const config = vscode.workspace.getConfiguration('tasks', vscode.Uri.file(workspaceDir));
-        let existingTasks = config.get<any[]>('tasks', []);
-        
-        for (const task of tasks) {
-            // Check if task with same name already exists
-            let finalLabel = task.label;
-            const currentProjectName = path.basename(task.file, path.extname(task.file));
-            
-            // Find duplicate tasks
-            const duplicateTasks = existingTasks.filter(t => t.label === task.label);
-            
-            if (duplicateTasks.length > 0) {
-                // Check if there are tasks from different projects
-                const differentProjectTask = duplicateTasks.find(t => {
-                    const taskProjectName = path.basename(t.file, path.extname(t.file));
-                    return taskProjectName !== currentProjectName;
-                });
-                
-                if (differentProjectTask) {
-                    // If there are tasks from different projects, add project name suffix
-                    finalLabel = `${task.label}-${currentProjectName}`;
-                    
-                    // Check if it's still duplicate after adding project name suffix
-                    if (existingTasks.some(t => t.label === finalLabel)) {
-                        console.warn(`Task "${finalLabel}" already exists. Skipping task creation.`);
-                        continue; // Skip this task
-                    }
-                } else {
-                    // If all duplicate tasks are from the same project, skip this task
-                    console.warn(`Task "${task.label}" already exists for this project. Skipping task creation.`);
-                    continue; // Skip this task
-                }
-            }
-            
-            // Update task label
-            task.label = finalLabel;
-            existingTasks.push(task);
-        }
-        
-        await config.update('tasks', existingTasks, vscode.ConfigurationTarget.WorkspaceFolder);
+    private toFriendlyName(value: string): string {
+        return value
+            .split(/[-_\s]+/)
+            .filter(part => part.length > 0)
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
     }
 
-    /**
-     * Initialize default template directory structure
-     */
-    async initializeDefaultTemplates(toUserSpace: boolean = false): Promise<void> {
-        const templateDir = toUserSpace 
-            ? this.getUserTemplateDirectory()
-            : path.join(this.workspaceRoot, ProjectTemplateManager.DEFAULT_TEMPLATE_DIR);
-        
-        if (!fs.existsSync(templateDir)) {
-            fs.mkdirSync(templateDir, { recursive: true });
-            await this.createExampleTemplate(templateDir);
-        }
+    private isTextFile(filePath: string): boolean {
+        const extension = path.extname(filePath).toLowerCase();
+        return [
+            '.bat', '.cmd', '.css', '.dpr', '.inc', '.js', '.json', '.lfm', '.lpi', '.lpr',
+            '.md', '.pas', '.pp', '.ps1', '.sh', '.sql', '.txt', '.xml', '.yaml', '.yml'
+        ].includes(extension);
     }
 
-    private async createExampleTemplate(templateDir: string): Promise<void> {
-        // Get extension templates directory path
-        const extensionPath = vscode.extensions.getExtension('nxrp-dev.nexus-pascal')?.extensionPath;
-        if (!extensionPath) {
-            console.warn('Extension path not found');
-            return;
-        }
-        
-        const extensionTemplateDir = path.join(extensionPath, ProjectTemplateManager.DEFAULT_TEMPLATE_DIR);
-        
-        if (!fs.existsSync(extensionTemplateDir)) {
-            console.warn(`Extension templates directory not found: ${extensionTemplateDir}`);
-            return;
-        }
-        
-        try {
-            await fs.promises.cp(extensionTemplateDir, templateDir, {
-            recursive: true,
-            force: false,
-            errorOnExist: false
-        });            
-            console.log(`Templates copied from ${extensionTemplateDir} to ${templateDir}`);
-        } catch (error) {
-            console.error(`Failed to copy templates from ${extensionTemplateDir} to ${templateDir}:`, error);
-        }
-    }
-
-    /**
-     * Open template directory
-     */
-    async openTemplateDirectory(): Promise<void> {
-        const templateDirs = this.getTemplateDirectories();
-        
-        if (templateDirs.length === 0) {
-            vscode.window.showInformationMessage('No template directories found.');
-            return;
-        }
-
-        if (templateDirs.length === 1) {
-            // Only one directory, open it directly
-            await this.openDirectoryInExplorer(templateDirs[0]);
-        } else {
-            // Multiple directories, let user choose
-            const items = templateDirs.map(dir => ({
-                label: path.basename(dir),
-                description: dir,
-                detail: fs.existsSync(dir) ? 'Directory exists' : 'Directory not found',
-                path: dir
-            }));
-
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Select template directory to open'
-            });
-
-            if (selected) {
-                await this.openDirectoryInExplorer(selected.path);
-            }
-        }
-    }
-
-    /**
-     * Open directory in file explorer
-     */
-    private async openDirectoryInExplorer(dirPath: string): Promise<void> {
-        try {
-            if (!fs.existsSync(dirPath)) {
-                const createChoice = await vscode.window.showInformationMessage(
-                    `Directory does not exist: ${dirPath}. Would you like to create it?`,
-                    'Create Directory', 'Cancel'
-                );
-                
-                if (createChoice === 'Create Directory') {
-                    fs.mkdirSync(dirPath, { recursive: true });
-                } else {
-                    return;
-                }
-            }
-
-            const dirUri = vscode.Uri.file(dirPath);
-            const success = await vscode.env.openExternal(dirUri);
-            
-            if (!success) {
-                // Fallback to revealFileInOS if openExternal fails
-                await vscode.commands.executeCommand('revealFileInOS', dirUri);
-            }
-        } catch (error) {
-            vscode.window.showErrorMessage(`Failed to open directory: ${error}`);
-        }
+    private isPascalSourceFile(filePath: string): boolean {
+        const extension = path.extname(filePath).toLowerCase();
+        return ['.lpr', '.dpr', '.pas', '.pp'].includes(extension);
     }
 }

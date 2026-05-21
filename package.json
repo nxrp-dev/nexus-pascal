@@ -128,21 +128,6 @@
         "command": "nexusPascal.project.newfromtemplate",
         "title": "%project.newfromtemplate%",
         "icon": "$(file-add)"
-      },
-      {
-        "command": "nexusPascal.project.inittemplatedir",
-        "title": "%project.inittemplatedir%",
-        "icon": "$(folder-library)"
-      },
-      {
-        "command": "nexusPascal.project.inittemplatedirtouser",
-        "title": "%project.inittemplatedirtouser%",
-        "icon": "$(home)"
-      },
-      {
-        "command": "nexusPascal.project.opentemplatedir",
-        "title": "%project.opentemplatedir%",
-        "icon": "$(folder-opened)"
       }
     ],
     "keybindings": [
@@ -329,21 +314,6 @@
           "when": "view == FpcProjectExplorer",
           "group": "navigation",
           "icon": "$(add)"
-        },
-        {
-          "command": "nexusPascal.project.opentemplatedir",
-          "when": "view == FpcProjectExplorer",
-          "group": "navigation@1"
-        },
-        {
-          "command": "nexusPascal.project.inittemplatedir",
-          "when": "view == FpcProjectExplorer",
-          "group": "1_template"
-        },
-        {
-          "command": "nexusPascal.project.inittemplatedirtouser",
-          "when": "view == FpcProjectExplorer",
-          "group": "2_template"
         }
       ]
     },
