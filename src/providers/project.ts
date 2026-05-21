@@ -403,73 +403,65 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
 		}
 	}
 
+	private createCompileOptionFromTaskDefinition(taskDefinition: any): CompileOption | undefined {
+		if (!taskDefinition) {
+			return undefined;
+		}
+
+		if (taskDefinition.type === 'fpc') {
+			if (!taskDefinition.file) {
+				return undefined;
+			}
+
+			const cwd = this.resolveWorkspacePath(taskDefinition.cwd);
+			const compileDefinition = Object.assign(new FpcTaskDefinition(), taskDefinition);
+			compileDefinition.cwd = cwd;
+			compileDefinition.file = this.resolveWorkspacePath(taskDefinition.file, cwd);
+			return new CompileOption(compileDefinition, this.workspaceRoot);
+		}
+
+		if (taskDefinition.type === 'lazarus') {
+			if (!taskDefinition.project) {
+				return undefined;
+			}
+
+			const cwd = this.resolveWorkspacePath(taskDefinition.cwd);
+			const compileDefinition = new FpcTaskDefinition();
+			compileDefinition.cwd = cwd;
+			compileDefinition.file = this.resolveWorkspacePath(taskDefinition.project, cwd);
+			return new CompileOption(compileDefinition, this.workspaceRoot);
+		}
+
+		return undefined;
+	}
+
 	async GetDefaultTaskOption(): Promise<CompileOption> {
-		// 1. Check if there is a Lazarus default build mode
-		const storage = DefaultBuildModeStorage.getInstance();
-		const lazarusDefaultId = storage.getDefaultBuildMode();
-		if (lazarusDefaultId) {
-			// Search in all cached Lazarus project infos
-			for (const projectInfo of this._projectInfosMap.values()) {
-				if (projectInfo.tasks) {
-					for (const task of projectInfo.tasks) {
-						if (task instanceof LazarusBuildModeTask && task.id === lazarusDefaultId) {
-							const opt = task.getCompileOption(this.workspaceRoot);
-							this.defaultCompileOption = opt;
-							return opt;
-						}
-					}
+		const cfg = vscode.workspace.getConfiguration('tasks', vscode.Uri.file(this.workspaceRoot));
+		const tasks = cfg?.tasks || [];
+
+		for (const taskDefinition of tasks) {
+			if ((taskDefinition.type === 'fpc' || taskDefinition.type === 'lazarus') && taskDefinition.group?.isDefault) {
+				const opt = this.createCompileOptionFromTaskDefinition(taskDefinition);
+				if (opt) {
+					this.defaultCompileOption = opt;
+					return opt;
 				}
 			}
 		}
 
-		// 2. Check if we have a default FPC item with project interface
-		if (this.defaultFpcItem?.project && this.defaultFpcItem.project.tasks && this.defaultFpcItem.project.tasks.length > 0) {
-			// Use the first task's compile options
-			const opt = this.defaultFpcItem.project.tasks[0].getCompileOption(this.workspaceRoot);
-			this.defaultCompileOption = opt;
-			return opt;
-		}
-
-		// Refresh tasks from tasks.json
-		await vscode.tasks.fetchTasks({ type: 'fpc' });
-
-		let cfg = vscode.workspace.getConfiguration('tasks', vscode.Uri.file(this.workspaceRoot));
-		let opt: CompileOption | undefined = undefined;
-		let is_first = true;
-		if (cfg?.tasks != undefined) {
-			for (const e of cfg?.tasks) {
-				if (e.type === 'fpc') {
-					if (e.group?.isDefault) {
-						let def = taskProvider.GetTaskDefinition(e.label);
-						// Create a FpcTaskProject to get compile options
-						const projectIntf = new FpcTaskProject(e.label, e.file, true, def);
-						// Use the first task's compile options
-						if (projectIntf.tasks && projectIntf.tasks.length > 0) {
-							opt = projectIntf.tasks[0].getCompileOption(this.workspaceRoot);
-						} else {
-							opt = new CompileOption(def, this.workspaceRoot);
-						}
-						this.defaultCompileOption = opt;
-						return opt;
-					}
-					if (is_first) {
-						is_first = false;
-						let def = taskProvider.GetTaskDefinition(e.label);
-						// Create a FpcTaskProject to get compile options
-						const projectIntf = new FpcTaskProject(e.label, e.file, false, def);
-						if (projectIntf.tasks.length > 0) {
-							opt = projectIntf.tasks[0].getCompileOption(this.workspaceRoot);
-						} else {
-							opt = new CompileOption(def, this.workspaceRoot);
-						}
-					}
+		for (const taskDefinition of tasks) {
+			if (taskDefinition.type === 'fpc' || taskDefinition.type === 'lazarus') {
+				const opt = this.createCompileOptionFromTaskDefinition(taskDefinition);
+				if (opt) {
+					this.defaultCompileOption = opt;
+					return opt;
 				}
 			}
 		}
-		if (!opt) {
-			opt = new CompileOption();
-		}
+
+		const opt = new CompileOption();
 		this.defaultCompileOption = opt;
 		return opt;
 	}
+
 }

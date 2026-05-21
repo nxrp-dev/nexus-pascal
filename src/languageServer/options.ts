@@ -175,7 +175,7 @@ export class InitializationOptions {
         this.overloadPolicy = cfg.get<number>("overloadPolicy");
         this.insertCompletionsAsSnippets = cfg.get<boolean>('insertCompletionsAsSnippets');
         this.insertCompletionsAsSnippets = cfg.get<boolean>('insertCompletionsAsSnippets');
-        this.includeWorkspaceFoldersAsIncludePaths = cfg.get<boolean>('insertCompletionsAsSnippets');
+        this.includeWorkspaceFoldersAsIncludePaths = cfg.get<boolean>('includeWorkspaceFoldersAsIncludePaths');
         this.includeWorkspaceFoldersAsUnitPaths = cfg.get<boolean>('includeWorkspaceFoldersAsUnitPaths');
         this.checkSyntax = cfg.get<boolean>('checkSyntax');
         this.publishDiagnostics = cfg.get<boolean>('publishDiagnostics');
