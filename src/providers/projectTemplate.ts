@@ -28,7 +28,7 @@ export class ProjectTemplateManager {
      * Get template directory paths
      */
     private getTemplateDirectories(): string[] {
-        const config = vscode.workspace.getConfiguration('fpctoolkit');
+        const config = vscode.workspace.getConfiguration('nexusPascal');
         const customTemplateDirs = config.get<string[]>('project.templateDirectories', []);
         
         const directories: string[] = [];
@@ -62,7 +62,7 @@ export class ProjectTemplateManager {
      */
     private getUserTemplateDirectory(): string {
         const os = require('os');
-        return path.join(os.homedir(), '.fpctoolkit', 'templates');
+        return path.join(os.homedir(), '.nexus-pascal', 'templates');
     }
 
     /**
@@ -110,7 +110,7 @@ export class ProjectTemplateManager {
     private async loadBuiltInTemplates(): Promise<ProjectTemplate[]> {
         const templates: ProjectTemplate[] = [];
         
-        const extensionPath = vscode.extensions.getExtension('coolchyni.fpctoolkit')?.extensionPath;
+        const extensionPath = vscode.extensions.getExtension('nxrp-dev.nexus-pascal')?.extensionPath;
         if (!extensionPath) {
             return templates;
         }
@@ -382,7 +382,7 @@ end.`,
      */
     private async createExampleTemplate(templateDir: string): Promise<void> {
         // Get extension templates directory path
-        const extensionPath = vscode.extensions.getExtension('coolchyni.fpctoolkit')?.extensionPath;
+        const extensionPath = vscode.extensions.getExtension('nxrp-dev.nexus-pascal')?.extensionPath;
         if (!extensionPath) {
             console.warn('Extension path not found');
             return;

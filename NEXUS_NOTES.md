@@ -13,7 +13,7 @@ Setup steps:
 
 1. Clone the Nexus fork:
 
-   `git clone https://github.com/nxrp-dev/fpctoolkit.git C:\gitdev\tools\fpctoolkit`
+   `git clone https://github.com/nxrp-dev/nexus-pascal.git C:\gitdev\tools\nexus-pascal`
 
 2. Install the current Node.js LTS release.
 
@@ -44,7 +44,7 @@ Setup steps:
    Start in the local toolkit checkout:
 
    ```powershell
-   cd C:\gitdev\tools\fpctoolkit
+   cd C:\gitdev\tools\nexus-pascal
    npm.cmd ci
    ```
 
@@ -59,7 +59,7 @@ Setup steps:
    Start in the local toolkit checkout:
 
    ```powershell
-   cd C:\gitdev\tools\fpctoolkit
+   cd C:\gitdev\tools\nexus-pascal
    npm.cmd run compile
    ```
 
@@ -74,8 +74,6 @@ Dependency audit note:
 - `npm.cmd audit` currently reports vulnerabilities in the upstream dependency
   tree.
 - Do not run `npm.cmd audit fix` as a routine setup step.
-- A trial run upgraded `@modelcontextprotocol/sdk` and caused a TypeScript
-  inference failure in `src/mcp/server.ts`.
 - Dependency updates should be handled as intentional source changes with a
   compile check after each step.
 

@@ -126,7 +126,7 @@ function GetEnvironmentVariables(): { [key: string]: string | undefined } {
     const plat = process.platform;
     let userEnvironmentVariables: { [key: string]: string | undefined } = {};
     let keys: string[] = ['PP', 'FPCDIR', 'LAZARUSDIR', 'FPCTARGET', 'FPCTARGETCPU'];
-    let settingEnvironmentVariables = workspace.getConfiguration('fpctoolkit.env');
+    let settingEnvironmentVariables = workspace.getConfiguration('nexusPascal.env');
     keys.forEach(key => {
         const val = settingEnvironmentVariables.get<string>(key);
         if (val) {
@@ -262,7 +262,7 @@ export class TLangClient implements ErrorHandler  {
 
     private getLanguageServerFileName(): string {
         let extensionProcessName: string = 'pasls';
-        let paslspath=vscode.workspace.getConfiguration('fpctoolkit.pasls').get<string>('path');
+        let paslspath=vscode.workspace.getConfiguration('nexusPascal.pasls').get<string>('path');
       
 
         const plat: NodeJS.Platform = process.platform;
@@ -486,11 +486,11 @@ export class TLangClient implements ErrorHandler  {
         if (!fpcDir || !fs.existsSync(fpcDir) || !fs.lstatSync(fpcDir).isDirectory()) {
             const openSettings = vscode.l10n.t("Open Settings");
             vscode.window.showErrorMessage(
-                vscode.l10n.t("FPCDIR is not set or invalid. Please set the FPCDIR path in settings (fpctoolkit.env)"),
+                vscode.l10n.t("FPCDIR is not set or invalid. Please set the FPCDIR path in settings (nexusPascal.env)"),
                 openSettings
             ).then(selection => {
                 if (selection === openSettings) {
-                    vscode.commands.executeCommand('workbench.action.openSettings', 'fpctoolkit.env.FPCDIR');
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'nexusPascal.env.FPCDIR');
                 }
             });
             return;
@@ -558,7 +558,7 @@ export class TLangClient implements ErrorHandler  {
             ]
         }
 
-        this.client = new LanguageClient('fpctoolkit.lsp', 'Free Pascal Language Server', serverOptions, clientOptions);
+        this.client = new LanguageClient('nexusPascal.lsp', 'Free Pascal Language Server', serverOptions, clientOptions);
     };
 
     /**

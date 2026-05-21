@@ -17,7 +17,7 @@
 
 ```json
 {
-    "fpctoolkit.lazarus.preferLazbuild": true
+    "nexusPascal.lazarus.preferLazbuild": true
 }
 ```
 
@@ -33,7 +33,7 @@
    - **Windows**: `C:\lazarus\lazbuild.exe`, `C:\Program Files\Lazarus\lazbuild.exe`
    - **macOS**: `/usr/local/bin/lazbuild`, `/Applications/Lazarus/lazbuild`
    - **Linux**: `/usr/bin/lazbuild`, `/usr/local/bin/lazbuild`
-3. 检查 `LAZARUSDIR` 环境变量或 `fpctoolkit.env.LAZARUSDIR` 设置
+3. 检查 `LAZARUSDIR` 环境变量或 `nexusPascal.env.LAZARUSDIR` 设置
 
 ## 构建模式
 
@@ -83,7 +83,7 @@ fpc MyProject.lpr -MObjFPC -Scghi -O1 -g -gl -l -vewnhibq -Fu./lib -FU./out
 1. 确保 Lazarus 已正确安装
 2. 将 Lazarus 安装目录添加到系统 PATH
 3. 设置 `LAZARUSDIR` 环境变量
-4. 在 VS Code 设置中配置 `fpctoolkit.env.LAZARUSDIR`
+4. 在 VS Code 设置中配置 `nexusPascal.env.LAZARUSDIR`
 
 ### 编译错误
 

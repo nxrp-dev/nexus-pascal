@@ -1,17 +1,20 @@
 {
-  "name": "fpctoolkit",
-  "displayName": "FreePascal Toolkit",
-  "description": "Free pascal compile and build.",
+  "name": "nexus-pascal",
+  "displayName": "Nexus Pascal",
+  "description": "Nexus Pascal IDE support for Free Pascal and Lazarus projects.",
   "version": "1.2.7",
   "engines": {
     "vscode": "^1.89.0"
   },
+  "extensionDependencies": [
+    "ms-vscode.cpptools"
+  ],
   "icon": "images/logo.png",
   "categories": [
     "Programming Languages"
   ],
-  "publisher": "coolchyni",
-  "author": "coolchyni <coolchyni@gmail.com>",
+  "publisher": "nxrp-dev",
+  "author": "nxrp-dev",
   "license": "MIT",
   "keywords": [
     "free",
@@ -25,22 +28,16 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/coolchyni/fpctoolkit.git"
+    "url": "https://github.com/nxrp-dev/nexus-pascal.git"
   },
   "bugs": {
-    "url": "https://github.com/coolchyni/fpctoolkit/issues"
+    "url": "https://github.com/nxrp-dev/nexus-pascal/issues"
   },
   "activationEvents": [
     "onDebug"
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "mcpServerDefinitionProviders": [
-      {
-        "id": "pascal-mcp-server",
-        "label": "Pascal MCP Server"
-      }
-    ],
     "languages": [
       {
         "id": "objectpascal",
@@ -92,62 +89,62 @@
     ],
     "commands": [
       {
-        "command": "fpctoolkit.project.newproject",
+        "command": "nexusPascal.project.newproject",
         "title": "%project.newproject%",
         "icon": "$(add)"
       },
       {
-        "command": "fpctoolkit.project.build",
+        "command": "nexusPascal.project.build",
         "title": "%project.build%",
         "icon": "$(play)"
       },
       {
-        "command": "fpctoolkit.project.rebuild",
+        "command": "nexusPascal.project.rebuild",
         "title": "%project.rebuild%"
       },
       {
-        "command": "fpctoolkit.project.clean",
+        "command": "nexusPascal.project.clean",
         "title": "%project.clear%"
       },
       {
-        "command": "fpctoolkit.project.opensetting",
+        "command": "nexusPascal.project.opensetting",
         "title": "%project.open%"
       },
       {
-        "command": "fpctoolkit.project.add",
+        "command": "nexusPascal.project.add",
         "title": "%project.newconfig%"
       },
       {
-        "command": "fpctoolkit.project.setdefault",
+        "command": "nexusPascal.project.setdefault",
         "title": "%project.setdefault%"
       },
       {
-        "command": "fpctoolkit.lazarus.convertToFpc",
+        "command": "nexusPascal.lazarus.convertToFpc",
         "title": "Convert to FPC Project",
-        "category": "FPCToolkit"
+        "category": "Nexus Pascal"
       },
       {
-        "command": "fpctoolkit.project.openWithLazarus",
+        "command": "nexusPascal.project.openWithLazarus",
         "title": "Open with Lazarus",
         "icon": "$(link-external)"
       },
       {
-        "command": "fpctoolkit.project.newfromtemplate",
+        "command": "nexusPascal.project.newfromtemplate",
         "title": "%project.newfromtemplate%",
         "icon": "$(file-add)"
       },
       {
-        "command": "fpctoolkit.project.inittemplatedir",
+        "command": "nexusPascal.project.inittemplatedir",
         "title": "%project.inittemplatedir%",
         "icon": "$(folder-library)"
       },
       {
-        "command": "fpctoolkit.project.inittemplatedirtouser",
+        "command": "nexusPascal.project.inittemplatedirtouser",
         "title": "%project.inittemplatedirtouser%",
         "icon": "$(home)"
       },
       {
-        "command": "fpctoolkit.project.opentemplatedir",
+        "command": "nexusPascal.project.opentemplatedir",
         "title": "%project.opentemplatedir%",
         "icon": "$(folder-opened)"
       }
@@ -165,7 +162,7 @@
       },
       {
         "key": "ctrl+shift+c",
-        "command": "fpctoolkit.code.complete",
+        "command": "nexusPascal.code.complete",
         "when": "editorTextFocus && !isInEmbeddedEditor"
       }
     ],
@@ -373,65 +370,65 @@
     "menus": {
       "view/item/context": [
         {
-          "command": "fpctoolkit.project.build",
+          "command": "nexusPascal.project.build",
           "when": "view == FpcProjectExplorer && (viewItem==fpcbuild || viewItem==lazarusbuildmode)",
           "group": "fpcproject@1"
         },
         {
-          "command": "fpctoolkit.project.rebuild",
+          "command": "nexusPascal.project.rebuild",
           "when": "view == FpcProjectExplorer && (viewItem==fpcbuild || viewItem==lazarusbuildmode)",
           "group": "fpcproject@2"
         },
         {
-          "command": "fpctoolkit.project.clean",
+          "command": "nexusPascal.project.clean",
           "when": "view == FpcProjectExplorer && (viewItem==fpcbuild || viewItem==lazarusbuildmode)",
           "group": "fpcproject@3"
         },
         {
-          "command": "fpctoolkit.project.setdefault",
+          "command": "nexusPascal.project.setdefault",
           "when": "view == FpcProjectExplorer && (viewItem==fpcbuild || viewItem==lazarusbuildmode)",
           "group": "fpcprojectcfg@4"
         },
         {
-          "command": "fpctoolkit.project.add",
+          "command": "nexusPascal.project.add",
           "when": "view == FpcProjectExplorer && (viewItem==fpcproject)",
           "group": "fpcproject@0"
         },
         {
-          "command": "fpctoolkit.project.openWithLazarus",
+          "command": "nexusPascal.project.openWithLazarus",
           "when": "view == FpcProjectExplorer && viewItem==lazarusproject",
           "group": "lazarusproject@1"
         },
         {
-          "command": "fpctoolkit.project.build",
+          "command": "nexusPascal.project.build",
           "when": "view == FpcProjectExplorer && (viewItem==fpcbuild || viewItem==lazarusbuildmode)",
           "group": "inline"
         },
         {
-          "command": "fpctoolkit.lazarus.convertToFpc",
+          "command": "nexusPascal.lazarus.convertToFpc",
           "when": "view == FpcProjectExplorer && viewItem == lazarusbuildmode",
           "group": "fpcprojectcfg@5"
         }
       ],
       "view/title": [
         {
-          "command": "fpctoolkit.project.newproject",
+          "command": "nexusPascal.project.newproject",
           "when": "view == FpcProjectExplorer",
           "group": "navigation",
           "icon": "$(add)"
         },
         {
-          "command": "fpctoolkit.project.opentemplatedir",
+          "command": "nexusPascal.project.opentemplatedir",
           "when": "view == FpcProjectExplorer",
           "group": "navigation@1"
         },
         {
-          "command": "fpctoolkit.project.inittemplatedir",
+          "command": "nexusPascal.project.inittemplatedir",
           "when": "view == FpcProjectExplorer",
           "group": "1_template"
         },
         {
-          "command": "fpctoolkit.project.inittemplatedirtouser",
+          "command": "nexusPascal.project.inittemplatedirtouser",
           "when": "view == FpcProjectExplorer",
           "group": "2_template"
         }
@@ -439,42 +436,42 @@
     },
     "configuration": [
       {
-        "title": "FpcToolkit",
+        "title": "Nexus Pascal",
         "properties": {
-          "fpctoolkit.searchPath": {
+          "nexusPascal.searchPath": {
             "type": "array",
             "description": "%config.searchPath%",
             "items": {
               "type": "string"
             }
           },
-          "fpctoolkit.libPath": {
+          "nexusPascal.libPath": {
             "type": "array",
             "description": "%config.libPath%",
             "items": {
               "type": "string"
             }
           },
-          "fpctoolkit.customOptions": {
+          "nexusPascal.customOptions": {
             "type": "array",
             "items": {
               "type": "string"
             },
             "description": "%config.customOptions%"
           },
-          "fpctoolkit.env.PP": {
+          "nexusPascal.env.PP": {
             "type": "string",
             "markdownDescription": "%config.env.PP%"
           },
-          "fpctoolkit.env.FPCDIR": {
+          "nexusPascal.env.FPCDIR": {
             "type": "string",
             "markdownDescription": "%config.env.FPCDIR%"
           },
-          "fpctoolkit.env.LAZARUSDIR": {
+          "nexusPascal.env.LAZARUSDIR": {
             "type": "string",
             "markdownDescription": "%config.env.LAZARUSDIR%"
           },
-          "fpctoolkit.env.FPCTARGET": {
+          "nexusPascal.env.FPCTARGET": {
             "type": "string",
             "markdownDescription": "%config.env.FPCTARGET%",
             "examples": [
@@ -484,7 +481,7 @@
               "Darwin"
             ]
           },
-          "fpctoolkit.env.FPCTARGETCPU": {
+          "nexusPascal.env.FPCTARGETCPU": {
             "type": "string",
             "markdownDescription": "%config.env.FPCTARGETCPU%",
             "examples": [
@@ -493,55 +490,35 @@
               "i386"
             ]
           },
-          "fpctoolkit.format.tabsize": {
+          "nexusPascal.format.tabsize": {
             "type": "number",
             "default": 2,
             "markdownDescription": "%config.format.tabsize%"
           },
-          "fpctoolkit.pasls.path": {
+          "nexusPascal.pasls.path": {
             "type": "string",
             "description": "%config.pasls.path%"
           },
-          "fpctoolkit.format.enabled": {
+          "nexusPascal.format.enabled": {
             "type": "boolean",
             "default": "true",
             "description": "%config.format.enabled%"
           },
-          "fpctoolkit.format.cfgpath": {
+          "nexusPascal.format.cfgpath": {
             "type": "string",
             "description": "%config.format.cfgpath%"
           },
-          "fpctoolkit.debug.autoBuild": {
+          "nexusPascal.debug.autoBuild": {
             "type": "boolean",
             "default": true,
             "description": "%config.debug.autoBuild%"
           },
-          "fpctoolkit.lazarus.enabled": {
+          "nexusPascal.lazarus.enabled": {
             "type": "boolean",
             "default": true,
             "description": "%config.lazarus.enabled%"
           },
-          "fpctoolkit.mcp.enabled": {
-            "type": "boolean",
-            "default": false,
-            "description": "%config.mcp.enabled%"
-          },
-          "fpctoolkit.mcp.autoRegister": {
-            "type": "boolean",
-            "default": true,
-            "description": "%config.mcp.autoRegister%"
-          },
-          "fpctoolkit.mcp.port": {
-            "type": "number",
-            "default": 0,
-            "description": "%config.mcp.port%"
-          },
-          "fpctoolkit.mcp.host": {
-            "type": "string",
-            "default": "localhost",
-            "description": "%config.mcp.host%"
-          },
-          "fpctoolkit.project.templateDirectories": {
+          "nexusPascal.project.templateDirectories": {
             "type": "array",
             "items": {
               "type": "string"
@@ -549,7 +526,7 @@
             "default": [],
             "description": "%config.project.templateDirectories%"
           },
-          "fpctoolkit.lazarus.preferLazbuild": {
+          "nexusPascal.lazarus.preferLazbuild": {
             "type": "boolean",
             "default": true,
             "description": "%config.lazarus.preferLazbuild%"
@@ -557,9 +534,9 @@
         }
       },
       {
-        "title": "FpcToolkit LanguageServer",
+        "title": "Nexus Pascal LanguageServer",
         "properties": {
-          "fpctoolkit.lsp.trace.server": {
+          "nexusPascal.lsp.trace.server": {
             "scope": "window",
             "type": "string",
             "enum": [
@@ -570,11 +547,11 @@
             "default": "off",
             "description": "%lsp.trace.server%"
           },
-          "fpctoolkit.lsp.initializationOptions.program": {
+          "nexusPascal.lsp.initializationOptions.program": {
             "type": "string",
             "description": "%lsp.initializationOptions.program%"
           },
-          "fpctoolkit.lsp.initializationOptions.overloadPolicy": {
+          "nexusPascal.lsp.initializationOptions.overloadPolicy": {
             "type": "number",
             "scope": "application",
             "default": 3,
@@ -590,59 +567,59 @@
             ],
             "description": "%lsp.initializationOptions.overloadPolicy%"
           },
-          "fpctoolkit.lsp.initializationOptions.maximumCompletions": {
+          "nexusPascal.lsp.initializationOptions.maximumCompletions": {
             "type": "number",
             "default": 50,
             "markdownDescription": "%lsp.initializationOptions.maximumCompletions%"
           },
-          "fpctoolkit.lsp.initializationOptions.insertCompletionsAsSnippets": {
+          "nexusPascal.lsp.initializationOptions.insertCompletionsAsSnippets": {
             "type": "boolean",
             "default": false,
             "description": "%lsp.initializationOptions.insertCompletionsAsSnippets%"
           },
-          "fpctoolkit.lsp.initializationOptions.insertCompletionProcedureBrackets": {
+          "nexusPascal.lsp.initializationOptions.insertCompletionProcedureBrackets": {
             "type": "boolean",
             "default": false,
             "description": "%lsp.initializationOptions.insertCompletionProcedureBrackets%"
           },
-          "fpctoolkit.lsp.initializationOptions.includeWorkspaceFoldersAsUnitPaths": {
+          "nexusPascal.lsp.initializationOptions.includeWorkspaceFoldersAsUnitPaths": {
             "type": "boolean",
             "default": true,
             "description": "%lsp.initializationOptions.includeWorkspaceFoldersAsUnitPaths%"
           },
-          "fpctoolkit.lsp.initializationOptions.includeWorkspaceFoldersAsIncludePaths": {
+          "nexusPascal.lsp.initializationOptions.includeWorkspaceFoldersAsIncludePaths": {
             "type": "boolean",
             "default": true,
             "description": "%lsp.initializationOptions.includeWorkspaceFoldersAsIncludePaths%"
           },
-          "fpctoolkit.lsp.initializationOptions.checkSyntax": {
+          "nexusPascal.lsp.initializationOptions.checkSyntax": {
             "type": "boolean",
             "scope": "application",
             "default": false,
             "description": "%lsp.initializationOptions.checkSyntax%"
           },
-          "fpctoolkit.lsp.initializationOptions.publishDiagnostics": {
+          "nexusPascal.lsp.initializationOptions.publishDiagnostics": {
             "type": "boolean",
             "scope": "application",
             "default": false,
             "description": "%lsp.initializationOptions.publishDiagnostics%"
           },
-          "fpctoolkit.lsp.initializationOptions.workspaceSymbols": {
+          "nexusPascal.lsp.initializationOptions.workspaceSymbols": {
             "type": "boolean",
             "default": false,
             "description": "%lsp.initializationOptions.workspaceSymbols%"
           },
-          "fpctoolkit.lsp.initializationOptions.documentSymbols": {
+          "nexusPascal.lsp.initializationOptions.documentSymbols": {
             "type": "boolean",
             "default": true,
             "description": "%lsp.initializationOptions.documentSymbols%"
           },
-          "fpctoolkit.lsp.initializationOptions.minimalisticCompletions": {
+          "nexusPascal.lsp.initializationOptions.minimalisticCompletions": {
             "type": "boolean",
             "default": false,
             "description": "%lsp.initializationOptions.minimalisticCompletions%"
           },
-          "fpctoolkit.lsp.initializationOptions.showSyntaxErrors": {
+          "nexusPascal.lsp.initializationOptions.showSyntaxErrors": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "%lsp.initializationOptions.showSyntaxErrors%"
@@ -689,7 +666,6 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "lint": "eslint src --ext ts",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish",
@@ -698,12 +674,10 @@
     "build-base": "esbuild ./out/extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.16.0",
     "@types/fs-extra": "9.0.2",
     "fast-xml-parser": "^5.2.5",
     "fs-extra": "9.0.1",
     "vscode-languageclient": "^8.0.1",
-    "vscode-nls": "^3.2.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -711,13 +685,10 @@
     "@types/mocha": "^7.0.2",
     "@types/node": "^13.13.52",
     "@types/vscode": "^1.89.0",
-    "@typescript-eslint/eslint-plugin": "^5.28.0",
-    "@typescript-eslint/parser": "^5.28.0",
     "esbuild": "^0.27.2",
-    "eslint": "^8.10.0",
     "glob": "^7.2.0",
     "mocha": "^9.2.1",
     "typescript": "^5.8.3"
   },
-  "homepage": "https://github.com/coolchyni/fpctoolkit#readme"
+  "homepage": "https://github.com/nxrp-dev/nexus-pascal#readme"
 }

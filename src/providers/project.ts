@@ -240,7 +240,7 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
 				// Handle .lpi files (Lazarus projects) - only if Lazarus support is enabled
 				else if (absolutePath.toLowerCase().endsWith('.lpi')) {
 					if (this.projectTypeFilter === undefined || this.projectTypeFilter === ProjectType.Lazarus) {
-						const config = vscode.workspace.getConfiguration('fpctoolkit');
+						const config = vscode.workspace.getConfiguration('nexusPascal');
 						const lazarusEnabled = config.get<boolean>('lazarus.enabled', true);
 						if (lazarusEnabled) {
 							this.collectLazarusProject(absolutePath, itemMaps, workspaceFolder, relativePath);
@@ -250,7 +250,7 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
 				// Handle .lpk files (Lazarus packages)
 				else if (absolutePath.toLowerCase().endsWith('.lpk')) {
 					if (this.projectTypeFilter === undefined || this.projectTypeFilter === ProjectType.Lazarus) {
-						const config = vscode.workspace.getConfiguration('fpctoolkit');
+						const config = vscode.workspace.getConfiguration('nexusPascal');
 						const lazarusEnabled = config.get<boolean>('lazarus.enabled', true);
 						if (lazarusEnabled) {
 							this.collectLazarusProject(absolutePath, itemMaps, workspaceFolder, relativePath);
@@ -305,7 +305,7 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
 			itemMaps.set(absolutePath, item);
 		} catch (error) {
 			console.error(`Error collecting FPC project ${file}:`, error);
-			vscode.window.showErrorMessage("FPCToolkit:" + Error(<string>error).message);
+			vscode.window.showErrorMessage("Nexus Pascal:" + Error(<string>error).message);
 		}
 	}
 
@@ -344,7 +344,7 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
 			}
 		} catch (error) {
 			console.error(`Error collecting Lazarus project ${file}:`, error);
-			vscode.window.showErrorMessage("FPCToolkit:" + Error(<string>error).message);
+			vscode.window.showErrorMessage("Nexus Pascal:" + Error(<string>error).message);
 		}
 	}
 

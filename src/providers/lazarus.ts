@@ -84,7 +84,7 @@ export class LazarusUtils {
      */
     public static initializeOutputChannel(): void {
         if (!this.outputChannel) {
-            this.outputChannel = vscode.window.createOutputChannel('FPC Toolkit: Lazarus');
+            this.outputChannel = vscode.window.createOutputChannel('Nexus Pascal: Lazarus');
         }
     }
 

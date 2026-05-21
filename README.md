@@ -1,15 +1,14 @@
-# FreePascal Toolkit
-`FreePascal Toolkit` is a VS Code extension for developing FreePascal programs.
+# Nexus Pascal
+`Nexus Pascal` is a VS Code extension for developing FreePascal programs.
 
-![FreePascal Toolkit preview](images/doc/fpctoolkit.gif)
+![Nexus Pascal preview](images/doc/fpctoolkit.gif)
 
 For Chinese documentation, see [中文文档](README_CN.md).
 
 ## Requirements
 
 - Install [Lazarus](https://www.lazarus-ide.org/) or [FreePascal](https://www.freepascal.org/download.var).
-- The extension will automatically search for the FPC path. If not found, please add FPC to your system PATH, or set `fpctoolkit.env.PP` in the extension settings.
-- Install [GDB Debugger - Beyond](https://marketplace.visualstudio.com/items?itemName=coolchyni.beyond-debug) for debugging.
+- The extension will automatically search for the FPC path. If not found, please add FPC to your system PATH, or set `nexusPascal.env.PP` in the extension settings.
 
 ## Features
 
@@ -24,7 +23,6 @@ For Chinese documentation, see [中文文档](README_CN.md).
 - **Code Formatting** - Integrated [jcf cli](https://github.com/coolchyni/jcf-cli) formatter
 - **Quick Fixes** - Smart suggestions and auto-corrections
 - **Refactoring** - Symbol renaming and code actions
-- **MCP Server** - Model Context Protocol server for AI assistant integration
 
 ### Detailed Feature Overview
 
@@ -91,19 +89,12 @@ Create new Pascal projects quickly using built-in or custom templates:
 - **Custom Templates**: Create your own templates in the `templates/` directory
 
 #### Usage
-1. Click the "+" button in FPC Projects view or use `Ctrl+Shift+P` → "FpcToolkit: Create New Project"
+1. Click the "+" button in Pascal Projects view or use `Ctrl+Shift+P` → "Nexus Pascal: Create New Project"
 2. Select from available templates
 3. Project files are created with variables automatically replaced
 4. Build tasks are configured and ready to use
 
 For detailed template creation and customization, see the [Template Guide](doc/en/TEMPLATE_GUIDE.md).
-
-#### AI Integration
-- **MCP Server**: Model Context Protocol server for AI assistants
-  - Get compile commands for Pascal files
-  - Project information extraction
-  - Source file analysis
-  - Enable with `fpctoolkit.mcp.enabled` setting
 
 ## Pascal Language Server
 

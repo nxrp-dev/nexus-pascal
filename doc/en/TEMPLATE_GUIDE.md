@@ -1,8 +1,8 @@
-# FPC Toolkit Project Template Guide
+# Nexus Pascal Project Template Guide
 
 ## Overview
 
-FPC Toolkit now supports a template-based project creation system that allows users to quickly create new projects using predefined templates and supports custom templates.
+Nexus Pascal now supports a template-based project creation system that allows users to quickly create new projects using predefined templates and supports custom templates.
 
 ## Features
 
@@ -16,7 +16,7 @@ FPC Toolkit now supports a template-based project creation system that allows us
 
 ### Creating New Projects
 
-1. Click the "+" button in the FPC Projects view, or use the command `FpcToolkit: Create New Project`
+1. Click the "+" button in the Pascal Projects view, or use the command `Nexus Pascal: Create New Project`
 2. Select a template from the available template list
 3. The project will be created based on the template, including files and build configuration
 
@@ -184,11 +184,11 @@ end.
 
 ### Custom Template Directories
 
-Configure `fpctoolkit.project.templateDirectories` in VS Code settings to specify additional template search directories:
+Configure `nexusPascal.project.templateDirectories` in VS Code settings to specify additional template search directories:
 
 ```json
 {
-  "fpctoolkit.project.templateDirectories": [
+  "nexusPascal.project.templateDirectories": [
     "/path/to/my/templates",
     "./project-templates",
     "~/my-pascal-templates"
@@ -203,9 +203,9 @@ Supports:
 
 ## Commands
 
-- `fpctoolkit.project.newproject`: Create new project (shows template selection)
-- `fpctoolkit.project.newfromtemplate`: Create new project from template (alias)
-- `fpctoolkit.project.inittemplatedir`: Initialize default template directory
+- `nexusPascal.project.newproject`: Create new project (shows template selection)
+- `nexusPascal.project.newfromtemplate`: Create new project from template (alias)
+- `nexusPascal.project.inittemplatedir`: Initialize default template directory
 
 ## Best Practices
 
@@ -245,12 +245,12 @@ Migrating from old project creation methods:
 ### Test Steps
 
 1. **Open VS Code and Load Project**
-   - Make sure you're in the FPC Toolkit project root directory
+   - Make sure you're in the Nexus Pascal project root directory
 
 2. **Test Template System**
    - Press F5 to start extension development host
    - Open an empty workspace in the new window
-   - Click the "+" button in FPC Projects view
+   - Click the "+" button in Pascal Projects view
    - Should see available template list including:
      - "New FPC Project" (built-in default template)
      - "Simple Console App" (if templates directory exists)

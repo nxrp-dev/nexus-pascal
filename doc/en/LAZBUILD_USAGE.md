@@ -17,7 +17,7 @@ You can control whether to prefer `lazbuild` over `fpc` using the configuration:
 
 ```json
 {
-    "fpctoolkit.lazarus.preferLazbuild": true
+    "nexusPascal.lazarus.preferLazbuild": true
 }
 ```
 
@@ -33,7 +33,7 @@ The extension automatically detects `lazbuild` in the following order:
    - **Windows**: `C:\lazarus\lazbuild.exe`, `C:\Program Files\Lazarus\lazbuild.exe`
    - **macOS**: `/usr/local/bin/lazbuild`, `/Applications/Lazarus/lazbuild`
    - **Linux**: `/usr/bin/lazbuild`, `/usr/local/bin/lazbuild`
-3. Check `LAZARUSDIR` environment variable or `fpctoolkit.env.LAZARUSDIR` setting
+3. Check `LAZARUSDIR` environment variable or `nexusPascal.env.LAZARUSDIR` setting
 
 ## Build Modes
 
@@ -83,7 +83,7 @@ If `lazbuild` is not detected:
 1. Ensure Lazarus is properly installed
 2. Add Lazarus installation directory to your system PATH
 3. Set the `LAZARUSDIR` environment variable
-4. Configure `fpctoolkit.env.LAZARUSDIR` in VS Code settings
+4. Configure `nexusPascal.env.LAZARUSDIR` in VS Code settings
 
 ### Compilation Errors
 

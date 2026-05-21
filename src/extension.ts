@@ -6,7 +6,6 @@ import { FpcCommandManager } from './commands';
 import * as util from './common/util';
 import type { TLangClient } from './languageServer/client';
 import type { JediFormatter } from './formatter';
-import type { McpManager } from './mcp';
 import * as MyCodeAction from './languageServer/codeaction';
 import { configuration } from './common/configuration';
 import * as path from 'path';
@@ -18,15 +17,13 @@ export let fpcProvider: FpcProjectProvider;
 export let lazarusProvider: FpcProjectProvider;
 export let projectProvider: FpcProjectProvider; // For backward compatibility
 export let commandManager: FpcCommandManager;
-export let mcpManager: McpManager;
 
 /**
  * Asynchronously initialize heavy components in the background
  * to avoid blocking extension activation
  */
 async function initializeHeavyComponentsAsync(
-    context: vscode.ExtensionContext,
-    workspaceRoot: string
+    context: vscode.ExtensionContext
 ): Promise<void> {
     // Yield to the event loop to allow activation to complete immediately
     await new Promise(resolve => setImmediate(resolve));
@@ -45,23 +42,6 @@ async function initializeHeavyComponentsAsync(
                 } catch (error) {
                     logger.appendLine(`Language server initialization failed: ${error}`);
                     console.error('Language server error:', error);
-                }
-            })(),
-
-            // MCP Manager
-            (async () => {
-                try {
-                    const config = vscode.workspace.getConfiguration('fpctoolkit');
-                    const mcpEnabled = config.get<boolean>('mcp.enabled', false); // Default to false
-                    if (mcpEnabled) {
-                        const { McpManager } = require('./mcp');
-                        mcpManager = new McpManager(context, workspaceRoot);
-                        await mcpManager.initialize(projectProvider);
-                        logger.appendLine('MCP manager initialized successfully');
-                    }
-                } catch (error) {
-                    logger.appendLine(`MCP initialization failed: ${error}`);
-                    console.error('MCP error:', error);
                 }
             })(),
 
@@ -104,12 +84,16 @@ async function initializeHeavyComponentsAsync(
 function registerDebugConfiguration(context: vscode.ExtensionContext): void {
     // Register debug configuration provider to check and compile project before debugging starts
     context.subscriptions.push(
-        vscode.debug.registerDebugConfigurationProvider('*', {
+        vscode.debug.registerDebugConfigurationProvider('cppdbg', {
             resolveDebugConfiguration: (folder, config, token) => {
                 // Just return config, don't do compilation here to avoid task.json redirect
                 return config;
             },
             resolveDebugConfigurationWithSubstitutedVariables: async (folder, config, token) => {
+                if (!isPascalDebugContext()) {
+                    return config;
+                }
+
                 try {
                     // Check for file updates before debugging starts and auto-compile default project if needed
                     await checkAndBuildBeforeDebug();
@@ -135,6 +119,13 @@ function registerDebugConfiguration(context: vscode.ExtensionContext): void {
     );
 }
 
+function isPascalDebugContext(): boolean {
+    const activeEditor = vscode.window.activeTextEditor;
+    const activeLanguageId = activeEditor?.document.languageId;
+
+    return activeLanguageId === 'objectpascal' || activeLanguageId === 'pascal';
+}
+
 // Check file updates and auto-compile before debugging
 async function checkAndBuildBeforeDebug(): Promise<void> {
     try {
@@ -146,7 +137,7 @@ async function checkAndBuildBeforeDebug(): Promise<void> {
         }
 
         // Check if auto-build feature is enabled
-        const config = vscode.workspace.getConfiguration('fpctoolkit');
+        const config = vscode.workspace.getConfiguration('nexusPascal');
         const autoBuildEnabled = config.get<boolean>('debug.autoBuild', true);
 
         if (!autoBuildEnabled) {
@@ -297,8 +288,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // ========================================
     
     // Create output channel first for logging
-    logger = vscode.window.createOutputChannel('fpctoolkit');
-    logger.appendLine('FreePascal Toolkit extension activating...');
+    logger = vscode.window.createOutputChannel('Nexus Pascal');
+    logger.appendLine('Nexus Pascal extension activating...');
 
     // Set extension context
     util.setExtensionContext(context);
@@ -340,35 +331,9 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(async (event) => {
             // Handle Lazarus support configuration changes
-            if (event.affectsConfiguration('fpctoolkit.lazarus.enabled')) {
+            if (event.affectsConfiguration('nexusPascal.lazarus.enabled')) {
                 // Refresh project provider to show/hide Lazarus projects
                 projectProvider?.refresh();
-            }
-
-            // Handle MCP configuration changes
-            if (event.affectsConfiguration('fpctoolkit.mcp.enabled')) {
-                const newMcpEnabled = vscode.workspace.getConfiguration('fpctoolkit').get<boolean>('mcp.enabled', true);
-
-                if (newMcpEnabled && !mcpManager) {
-                    // MCP was enabled, initialize it
-                    try {
-                        const { McpManager } = require('./mcp');
-                        mcpManager = new McpManager(context, workspaceRoot);
-                        await mcpManager.initialize(projectProvider);
-                    } catch (error) {
-                        console.error('Failed to initialize MCP Manager:', error);
-                        logger.appendLine(`MCP initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                    }
-                } else if (!newMcpEnabled && mcpManager) {
-                    // MCP was disabled, dispose it
-                    try {
-                        await mcpManager.dispose();
-                        mcpManager = undefined as any;
-                    } catch (error) {
-                        console.error('Failed to dispose MCP Manager:', error);
-                        logger.appendLine(`MCP disposal failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                    }
-                }
             }
         })
     );
@@ -380,7 +345,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // ========================================
     
     // Initialize heavy components in the background without blocking
-    initializeHeavyComponentsAsync(context, workspaceRoot).catch(error => {
+    initializeHeavyComponentsAsync(context).catch(error => {
         logger.appendLine(`Background initialization error: ${error}`);
         console.error('Background initialization error:', error);
     });
@@ -434,10 +399,6 @@ function onDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]): v
 }
 // this method is called when your extension is deactivated
 export async function deactivate() {
-    // Dispose MCP manager if it was initialized
-    if (mcpManager) {
-        await mcpManager.dispose();
-    }
     // Stop language client if it was initialized
     if (!client) {
         return undefined;

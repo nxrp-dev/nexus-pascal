@@ -36,8 +36,8 @@ export class ProjectScanner {
             // Set context for UI
             const hasLpi = files.some(f => f.fsPath.toLowerCase().endsWith('.lpi'));
             const hasFpc = files.some(f => f.fsPath.toLowerCase().endsWith('.lpr') || f.fsPath.toLowerCase().endsWith('.dpr'));
-            vscode.commands.executeCommand('setContext', 'fpctoolkit.lazarus.hasProjects', hasLpi);
-            vscode.commands.executeCommand('setContext', 'fpctoolkit.fpc.hasProjects', hasFpc);
+            vscode.commands.executeCommand('setContext', 'nexusPascal.lazarus.hasProjects', hasLpi);
+            vscode.commands.executeCommand('setContext', 'nexusPascal.fpc.hasProjects', hasFpc);
             
             return files;
         } finally {

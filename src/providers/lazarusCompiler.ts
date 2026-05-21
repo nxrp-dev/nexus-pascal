@@ -65,7 +65,7 @@ export class LazarusCompiler {
         }
 
         // Check LAZARUSDIR environment variable
-        const lazarusDir = process.env.LAZARUSDIR || vscode.workspace.getConfiguration('fpctoolkit').get<string>('env.LAZARUSDIR');
+        const lazarusDir = process.env.LAZARUSDIR || vscode.workspace.getConfiguration('nexusPascal').get<string>('env.LAZARUSDIR');
         if (lazarusDir) {
             const lazBuildPath = path.join(lazarusDir, process.platform === 'win32' ? 'lazbuild.exe' : 'lazbuild');
             try {
@@ -209,7 +209,7 @@ export class LazarusCompiler {
 
         if (isLazarusProject) {
             // Check user preference for lazbuild
-            const preferLazbuild = vscode.workspace.getConfiguration('fpctoolkit.lazarus').get<boolean>('preferLazbuild', true);
+            const preferLazbuild = vscode.workspace.getConfiguration('nexusPascal.lazarus').get<boolean>('preferLazbuild', true);
 
             if (preferLazbuild) {
                 // Try lazbuild 

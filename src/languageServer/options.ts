@@ -202,7 +202,7 @@ export class InitializationOptions {
     public clientProfileEnableFeatures: Array<string> = ['nullDocumentVersion'];
 
     constructor() {
-        let cfg = vscode.workspace.getConfiguration('fpctoolkit.lsp.initializationOptions');
+        let cfg = vscode.workspace.getConfiguration('nexusPascal.lsp.initializationOptions');
         this.program = cfg.get<string>('program');
         this.maximumCompletions = cfg.get<number>('maximumCompletions', 100);
         this.fpcOptions = cfg.get<Array<string>>("fpcOptions", []);

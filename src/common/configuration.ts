@@ -3,7 +3,7 @@ import {
     WorkspaceConfiguration, ConfigurationTarget, Uri
 } from "vscode";
 
-const extensionName = "fpctoolkit";
+const extensionName = "nexusPascal";
 
 class Configuration
 {

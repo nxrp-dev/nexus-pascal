@@ -63,7 +63,7 @@ export class FpcItem extends vscode.TreeItem {
             }
             // Add command to open the file when clicking on the item
             const command = {
-                command: "fpctoolkit.project.opensetting",
+                command: "nexusPascal.project.opensetting",
                 title: '',
                 arguments: [this]
             };

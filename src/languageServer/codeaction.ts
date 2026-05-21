@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { diagCollection } from '../providers/task';
 import { number } from 'zod';
 
-const COMMAND_UNUSED = 'fpctoolkit.code-actions.remove_unused_variable';
+const COMMAND_UNUSED = 'nexusPascal.code-actions.remove_unused_variable';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
                 linetext=has_var?'var ':'  '+ret.slice(0,-1).join(', ')+': '+ret[ret.length-1];
                 edit.replace(document.uri,line.range,linetext);
             }
-        
+
             let diags= diagCollection.get(document.uri);
             if(!diags){
                 vscode.workspace.applyEdit(edit);
@@ -60,7 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
                     {
                         continue;
                     }
-    
+
                     //chagne diag pos use workspace.onDidChangeTextDocument
                     // if(isdelete && item.range.start.line>=line.range.start.line){
                     //     item.range=new vscode.Range(item.range.start.line-1,item.range.start.character,item.range.end.line-1,item.range.end.character)
@@ -69,8 +69,8 @@ export function activate(context: vscode.ExtensionContext) {
                 }
                 diagCollection.set(document.uri, newdiags);
             }
-     
-           
+
+
             vscode.workspace.applyEdit(edit);
 
         })
@@ -97,7 +97,7 @@ export class FpcCodeAction implements vscode.CodeActionProvider {
                 return diagnostic.code === 5025;
             } )
 			.map(diagnostic => this.createCommandCodeAction(document,diagnostic));
-        
+
         if(context.triggerKind===vscode.CodeActionTriggerKind.Invoke){
             // CodeComplete
             const action = new vscode.CodeAction(
@@ -154,7 +154,7 @@ export class FpcCodeAction implements vscode.CodeActionProvider {
 
 	private createCommandCodeAction(document: vscode.TextDocument,diagnostic: vscode.Diagnostic): vscode.CodeAction {
         let matchs=diagnostic.message.match(/Local variable "(.*?)".*?not used/)!;
-     
+
         let variable=matchs[1];
 
 		const fix = new vscode.CodeAction('Remove variable `'+variable+'`', vscode.CodeActionKind.QuickFix);

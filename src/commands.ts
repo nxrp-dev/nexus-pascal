@@ -32,21 +32,21 @@ export class FpcCommandManager {
         return FpcCommandManager._context;
     }
     registerAll(context: vscode.ExtensionContext) {
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.build', this.ProjectBuild));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.rebuild', this.ProjectReBuild));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.clean', this.projectClean));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.opensetting', this.ProjectOpen));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.newproject', this.ProjectNew));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.newfromtemplate', this.NewProjectFromTemplate));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.inittemplatedir', this.InitializeTemplateDirectory));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.inittemplatedirtouser', this.InitializeTemplateDirectoryToUser));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.opentemplatedir', this.OpenTemplateDirectory));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.add', this.ProjectAdd));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.setdefault', this.projectSetDefault));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.project.openWithLazarus', this.openWithLazarus));
-        context.subscriptions.push(vscode.commands.registerCommand('fpctoolkit.lazarus.convertToFpc', this.lazarusConvertToFpc));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.build', this.ProjectBuild));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.rebuild', this.ProjectReBuild));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.clean', this.projectClean));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.opensetting', this.ProjectOpen));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.newproject', this.ProjectNew));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.newfromtemplate', this.NewProjectFromTemplate));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.inittemplatedir', this.InitializeTemplateDirectory));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.inittemplatedirtouser', this.InitializeTemplateDirectoryToUser));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.opentemplatedir', this.OpenTemplateDirectory));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.add', this.ProjectAdd));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.setdefault', this.projectSetDefault));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.project.openWithLazarus', this.openWithLazarus));
+        context.subscriptions.push(vscode.commands.registerCommand('nexusPascal.lazarus.convertToFpc', this.lazarusConvertToFpc));
 
-        context.subscriptions.push(vscode.commands.registerTextEditorCommand('fpctoolkit.code.complete', this.CodeComplete));
+        context.subscriptions.push(vscode.commands.registerTextEditorCommand('nexusPascal.code.complete', this.CodeComplete));
     }
 
     ProjectAdd = async (node: FpcItem) => {
