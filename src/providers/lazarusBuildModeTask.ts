@@ -4,7 +4,7 @@ import { CompileOption } from '../languageServer/options';
 import { IProjectIntf, IProjectTask } from './projectIntf';
 import { LazarusProject } from './lazarus';
 import { DefaultBuildModeStorage } from './defaultBuildModeStorage';
-import { FpcTaskDefinition, BuildOption } from './task';
+import { FpcTaskDefinition, BuildOption, LazarusTaskDefinition } from './task';
 import { LazarusVariableSubstitution } from './lazarusVariables';
 
 /**
@@ -408,24 +408,13 @@ export class LazarusBuildModeTask implements IProjectTask {
      * @returns vscode.Task object
      */
     getTask(): vscode.Task {
-        // Get workspace root directory
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
-        
-        // Create task definition
-        const taskDef = this.createTaskDefinition(workspaceRoot);
-        
-        // Add build mode information to task definition for Lazarus compilation
-        (taskDef as any).buildMode = this.buildMode;
-        (taskDef as any).isLazarusProject = true;
-        (taskDef as any).lazarusProjectFile = this.project.file;
-        
-        // Get task from taskProvider
-        const { taskProvider } = require('./task');
-        return taskProvider.getTask(
-            this.label,
-            (this.project as LazarusProject).mainFile || '',
-            taskDef
-        );
+        const taskDef = new LazarusTaskDefinition();
+        taskDef.project = this.project.file;
+        taskDef.cwd = path.dirname(this.project.file);
+        taskDef.buildMode = this.buildMode;
+
+        const { lazarusTaskProvider } = require('./task');
+        return lazarusTaskProvider.getTask(this.label, taskDef);
     }
     
     /**

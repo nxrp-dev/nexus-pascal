@@ -48,6 +48,15 @@ export class FpcTaskDefinition implements vscode.TaskDefinition {
 	buildEvent?:BuildEvent;
 }
 
+export class LazarusTaskDefinition implements vscode.TaskDefinition {
+	[name: string]: any;
+	readonly type: string = 'lazarus';
+	project?: string;
+	cwd?: string;
+	buildMode?: string;
+	forceRebuild?: boolean = false;
+}
+
 
 export class FpcTaskProvider implements vscode.TaskProvider {
 	static FpcTaskType = 'fpc';
@@ -169,6 +178,49 @@ export class FpcTaskProvider implements vscode.TaskProvider {
 
 	public refresh() {
 		client.restart();
+	}
+}
+
+export class LazarusTaskProvider implements vscode.TaskProvider {
+	static LazarusTaskType = 'lazarus';
+	public taskMap: Map<string, vscode.Task> = new Map<string, vscode.Task>();
+
+	constructor(private workspaceRoot: string) {
+	}
+
+	public async provideTasks(): Promise<vscode.Task[]> {
+		return [];
+	}
+
+	public resolveTask(_task: vscode.Task): vscode.Task | undefined {
+		const project: string = _task.definition.project;
+		if (!project) {
+			return undefined;
+		}
+
+		const definition: LazarusTaskDefinition = <any>_task.definition;
+		const task = this.getTask(_task.name, definition);
+		this.taskMap.set(_task.name, task);
+		return task;
+	}
+
+	public getTask(name: string, definition: LazarusTaskDefinition): vscode.Task {
+		const task = new LazarusTask(this.resolveCwd(definition.cwd), name, definition);
+		this.taskMap.set(name, task);
+		return task;
+	}
+
+	private resolveCwd(rawCwd?: string): string {
+		if (!rawCwd) {
+			return this.workspaceRoot;
+		}
+		if (rawCwd.includes('${workspaceFolder}')) {
+			return rawCwd.replace(/\$\{workspaceFolder\}/g, this.workspaceRoot);
+		}
+		if (path.isAbsolute(rawCwd)) {
+			return rawCwd;
+		}
+		return path.join(this.workspaceRoot, rawCwd);
 	}
 }
 
@@ -294,6 +346,37 @@ export class FpcTask extends vscode.Task {
 
 }
 
+export class LazarusTask extends vscode.Task {
+	private _BuildMode: BuildMode = BuildMode.normal;
+	public get BuildMode(): BuildMode {
+		return this._BuildMode;
+	}
+	public set BuildMode(value: BuildMode) {
+		this._BuildMode = value;
+	}
+
+	constructor(cwd: string, name: string, taskDefinition: LazarusTaskDefinition) {
+		super(
+			taskDefinition,
+			vscode.TaskScope.Workspace,
+			`${name}`,
+			LazarusTaskProvider.LazarusTaskType,
+			new FpcCustomExecution(async (): Promise<vscode.Pseudoterminal> => {
+				let fpcpath = process.env['PP'];
+				if (!fpcpath) {
+					fpcpath = 'fpc';
+				}
+
+				const buildMode = taskDefinition.buildMode || name;
+				const terminal = new LazarusBuildTerminal(cwd, fpcpath, taskDefinition.project, buildMode);
+				terminal.forceRebuild = taskDefinition.forceRebuild === true || this._BuildMode === BuildMode.rebuild;
+				terminal.args = taskDefinition.project ? [taskDefinition.project] : [];
+				return terminal;
+			})
+		);
+	}
+}
+
 class FpcCustomExecution extends vscode.CustomExecution {
 
 }
@@ -358,9 +441,11 @@ class FpcBuildTaskTerminal extends BaseBuildTerminal {
 }
 
 export let taskProvider: FpcTaskProvider;
+export let lazarusTaskProvider: LazarusTaskProvider;
 
 if (vscode.workspace.workspaceFolders) {
 	const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
 	taskProvider = new FpcTaskProvider(workspaceRoot);
+	lazarusTaskProvider = new LazarusTaskProvider(workspaceRoot);
 }
 

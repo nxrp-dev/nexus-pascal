@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { FpcProjectProvider } from './providers/project';
 import { FpcItem } from './providers/fpcItem';
 import { ProjectType } from './providers/projectType';
-import { diagCollection, FpcTaskProvider, taskProvider, FpcTask, BuildMode } from './providers/task';
+import { diagCollection, FpcTaskProvider, LazarusTaskProvider, taskProvider, lazarusTaskProvider, FpcTask, BuildMode } from './providers/task';
 import { FpcCommandManager } from './commands';
 import * as util from './common/util';
 import type { TLangClient } from './languageServer/client';
@@ -328,6 +328,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.tasks.registerTaskProvider(
             FpcTaskProvider.FpcTaskType,
             taskProvider
+        ),
+        vscode.tasks.registerTaskProvider(
+            LazarusTaskProvider.LazarusTaskType,
+            lazarusTaskProvider
         )
     );
 

@@ -343,6 +343,31 @@
             }
           }
         }
+      },
+      {
+        "type": "lazarus",
+        "required": [
+          "project"
+        ],
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Lazarus project or package file (.lpi or .lpk)"
+          },
+          "cwd": {
+            "type": "string",
+            "description": "%task.cwd%"
+          },
+          "buildMode": {
+            "type": "string",
+            "description": "Lazarus build mode to pass to lazbuild"
+          },
+          "forceRebuild": {
+            "type": "boolean",
+            "description": "Build all project/package files with lazbuild",
+            "default": false
+          }
+        }
       }
     ],
     "menus": {
