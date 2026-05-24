@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { CompileOption } from '../languageServer/options';
 import { LanguageServerProjectContext } from '../languageServer/projectContext';
+import { FpcBuildTarget } from '../model/pascalProject';
 import { IProjectIntf, IProjectTask } from './projectIntf';
 import { DefaultBuildModeStorage } from './defaultBuildModeStorage';
-import { FpcTaskProvider } from './task';
+import { PascalTaskFactory } from '../services/pascalTaskFactory';
 
 export class FpcTask implements IProjectTask {
     isInLpi: boolean = false;
@@ -12,9 +13,15 @@ export class FpcTask implements IProjectTask {
         public label: string,
         public isDefault: boolean,
         public project: IProjectIntf,
-        private taskDefinition: any,
-        private readonly taskProvider: FpcTaskProvider
-    ) {}
+        private taskDefinitionOrTarget: any | FpcBuildTarget,
+        private readonly taskFactory: PascalTaskFactory
+    ) {
+        this.taskDefinition = this.isFpcTarget(taskDefinitionOrTarget)
+            ? taskDefinitionOrTarget.taskDefinition
+            : taskDefinitionOrTarget;
+    }
+
+    private taskDefinition: any;
 
     getCompileOption(workspaceRoot: string): CompileOption {
         return new CompileOption(this.taskDefinition, workspaceRoot);
@@ -66,7 +73,11 @@ export class FpcTask implements IProjectTask {
             await this.ensureTaskInTasksJson();
         }
         
-        return this.taskProvider.getTask(
+        if (this.isFpcTarget(this.taskDefinitionOrTarget)) {
+            return this.taskFactory.createTask(this.taskDefinitionOrTarget);
+        }
+
+        return this.taskFactory.createFpcTask(
             this.label,
             this.project.file,
             this.taskDefinition
@@ -172,6 +183,10 @@ export class FpcTask implements IProjectTask {
             }
         }
     }
+
+    private isFpcTarget(value: any): value is FpcBuildTarget {
+        return value?.kind === 'fpc';
+    }
 }
 
 export class FpcTaskProject implements IProjectIntf {
@@ -181,7 +196,7 @@ export class FpcTaskProject implements IProjectIntf {
         public label: string,
         public file: string,
         isDefault: boolean,
-        private readonly taskProvider: FpcTaskProvider,
+        private readonly taskFactory: PascalTaskFactory,
         taskDefinitions: any[] | any = []
     ) {
         const taskDefs = Array.isArray(taskDefinitions) ? taskDefinitions : (taskDefinitions ? [taskDefinitions] : []);
@@ -194,7 +209,7 @@ export class FpcTaskProject implements IProjectIntf {
                     isTaskDefault,
                     this,
                     taskDef,
-                    this.taskProvider
+                    this.taskFactory
                 ));
             }
         }
@@ -209,7 +224,7 @@ export class FpcTaskProject implements IProjectIntf {
                     label: this.label,
                     file: this.file
                 },
-                this.taskProvider
+                this.taskFactory
             );
             this.tasks.push(defaultTask);
         }

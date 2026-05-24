@@ -12,6 +12,7 @@ import { ExtensionPaths } from './extensionPaths';
 import { PascalBuildTargetContextFactory } from './pascalBuildTargetContextFactory';
 import { PascalProjectModelService } from './pascalProjectModelService';
 import { PascalProjectTreeFactory } from './pascalProjectTreeFactory';
+import { PascalTaskFactory } from './pascalTaskFactory';
 import * as runtime from './runtime';
 
 export class NexusPascalExtension implements vscode.Disposable {
@@ -49,7 +50,8 @@ export class NexusPascalExtension implements vscode.Disposable {
         const lazarusTaskProvider = new LazarusTaskProvider(workspaceRoot);
         const projectModelService = new PascalProjectModelService(workspaceRoot);
         const buildTargetContextFactory = new PascalBuildTargetContextFactory(workspaceRoot);
-        const treeFactory = new PascalProjectTreeFactory(taskProvider, lazarusTaskProvider);
+        const taskFactory = new PascalTaskFactory(taskProvider, lazarusTaskProvider);
+        const treeFactory = new PascalProjectTreeFactory(taskFactory);
         const projectProvider = new FpcProjectProvider(
             workspaceRoot,
             taskProvider,

@@ -6,13 +6,10 @@ import { LazarusProject } from '../providers/lazarus';
 import { LazarusBuildModeTask } from '../providers/lazarusBuildModeTask';
 import { IProjectIntf, IProjectTask } from '../providers/projectIntf';
 import { ProjectType } from '../providers/projectType';
-import { FpcTaskProvider, LazarusTaskProvider } from '../providers/task';
+import { PascalTaskFactory } from './pascalTaskFactory';
 
 export class PascalProjectTreeFactory {
-    public constructor(
-        private readonly taskProvider: FpcTaskProvider,
-        private readonly lazarusTaskProvider: LazarusTaskProvider
-    ) {
+    public constructor(private readonly taskFactory: PascalTaskFactory) {
     }
 
     public createProjectItem(project: PascalProject): FpcItem {
@@ -72,7 +69,7 @@ export class PascalProjectTreeFactory {
     }
 
     private createFpcTargetAdapter(project: IProjectIntf, target: FpcBuildTarget): IProjectTask {
-        return new FpcTask(target.label, target.isDefault, project, target.taskDefinition, this.taskProvider);
+        return new FpcTask(target.label, target.isDefault, project, target, this.taskFactory);
     }
 
     private createLazarusTargetAdapter(project: LazarusProject, target: LazarusBuildTarget): IProjectTask {
@@ -81,8 +78,9 @@ export class PascalProjectTreeFactory {
             target.isDefault,
             target.isInProjectFile,
             project,
-            this.lazarusTaskProvider,
-            target.buildMode
+            this.taskFactory,
+            target.buildMode,
+            target
         );
     }
 }

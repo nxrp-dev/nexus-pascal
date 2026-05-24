@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { CompileOption } from '../languageServer/options';
 import { LanguageServerProjectContext } from '../languageServer/projectContext';
+import { LazarusBuildTarget } from '../model/pascalProject';
 import { IProjectIntf, IProjectTask } from './projectIntf';
 import { DefaultBuildModeStorage } from './defaultBuildModeStorage';
-import { LazarusTaskProvider } from './task';
-import { LazarusTaskDefinition } from './taskDefinitions';
+import { PascalTaskFactory } from '../services/pascalTaskFactory';
 
 export class LazarusBuildModeTask implements IProjectTask {
     public id?: string;
@@ -19,8 +19,9 @@ export class LazarusBuildModeTask implements IProjectTask {
         AIsDefault: boolean,
         AIsInLpi: boolean,
         AProject: IProjectIntf,
-        private readonly taskProvider: LazarusTaskProvider,
-        ABuildMode?: string
+        private readonly taskFactory: PascalTaskFactory,
+        ABuildMode?: string,
+        private readonly target?: LazarusBuildTarget
     ) {
         this.label = ALabel;
         this.project = AProject;
@@ -89,12 +90,16 @@ export class LazarusBuildModeTask implements IProjectTask {
     }
 
     public getTask(): vscode.Task {
-        const lDefinition = new LazarusTaskDefinition();
-        lDefinition.project = this.project.file;
-        lDefinition.cwd = path.dirname(this.project.file);
-        lDefinition.buildMode = this.buildMode;
+        if (this.target) {
+            return this.taskFactory.createTask(this.target);
+        }
 
-        return this.taskProvider.getTask(this.label, lDefinition);
+        return this.taskFactory.createLazarusTask(
+            this.label,
+            this.project.file,
+            path.dirname(this.project.file),
+            this.buildMode
+        );
     }
 
     public async setAsDefault(): Promise<void> {
