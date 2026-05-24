@@ -3,7 +3,7 @@ import path = require('path');
 import { configuration } from './common/configuration';
 import { env } from 'process';
 import * as fs from 'fs';
-import { client, logger } from './extension';
+import { getClient, getLogger } from './services/runtime';
 import * as util from './common/util';
 import {
     ExecuteCommandRequest,
@@ -47,8 +47,12 @@ export class JediFormatter {
         // 使用 pasls.formatCode 命令进行格式化
         vscode.languages.registerDocumentFormattingEditProvider('objectpascal', {
             async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+                const logger = getLogger();
+
                 try {
                     // 检查 LSP 客户端是否可用
+                    const client = getClient();
+
                     if (!client || !client['client']) {
                         logger.appendLine('Language server client is not available for formatting');
                         return [];

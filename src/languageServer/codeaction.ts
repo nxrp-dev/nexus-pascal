@@ -58,10 +58,6 @@ export function activate(context: vscode.ExtensionContext) {
                         continue;
                     }
 
-                    //chagne diag pos use workspace.onDidChangeTextDocument
-                    // if(isdelete && item.range.start.line>=line.range.start.line){
-                    //     item.range=new vscode.Range(item.range.start.line-1,item.range.start.character,item.range.end.line-1,item.range.end.character)
-                    // }
                     newdiags.push(item)
                 }
                 diagCollection.set(document.uri, newdiags);

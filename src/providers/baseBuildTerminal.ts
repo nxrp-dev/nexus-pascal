@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { TerminalEscape, TE_Style } from '../common/escape';
 import { diagCollection } from './task';
-import { client } from '../extension';
 
 export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode.TerminalExitStatus {
     private writeEmitter = new vscode.EventEmitter<string>();

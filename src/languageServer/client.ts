@@ -32,7 +32,7 @@ import { FpcProjectProvider } from '../providers/project';
 import * as util from '../common/util';
 import { InitializationOptions } from "./options";
 import { env } from 'process';
-import { client, logger } from '../extension';
+import { getLogger } from '../services/runtime';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 
@@ -205,14 +205,14 @@ export class TLangClient implements ErrorHandler  {
      *  be reset if a message got successfully send or received.
      */
     error(error: Error, message: Message | undefined, count: number | undefined): ErrorHandlerResult{
-        logger.appendLine(error.name+' '+error.message);
+        getLogger().appendLine(error.name+' '+error.message);
         return  {action:ErrorAction.Continue} as ErrorHandlerResult;
     }
     /**
     * The connection to the server got closed.
     */
     closed(): CloseHandlerResult{
-        logger.appendLine("Server closed.");
+        getLogger().appendLine("Server closed.");
         return  {action:CloseAction.Restart} as CloseHandlerResult;
     }
 
@@ -287,7 +287,7 @@ export class TLangClient implements ErrorHandler  {
                         msg=msg.substring(2).trim();
                     }
                     if (isFpcSourceDiagnosticMessage(msg)) {
-                        logger.appendLine(`Suppressed FPC source diagnostic: ${msg}`);
+                        getLogger().appendLine(`Suppressed FPC source diagnostic: ${msg}`);
                         return;
                     }
                     if (msg.includes('@') && msg.includes(':')) {
@@ -312,7 +312,7 @@ export class TLangClient implements ErrorHandler  {
                             }
                         });
                     } else {
-                        logger.appendLine(e.message);
+                        getLogger().appendLine(e.message);
                         vscode.window.showErrorMessage(e.message);
                     }
 
@@ -404,10 +404,10 @@ export class TLangClient implements ErrorHandler  {
 
         console.log("Greetings from pascal-language-server 🙏");
         let executable: string = this.getLanguageServerFileName();
-        logger.appendLine(`Testing executable at: ${executable}`);
+        getLogger().appendLine(`Testing executable at: ${executable}`);
 
         if (!fs.existsSync(executable)) {
-            logger.appendLine(`Error: Language server binary not found at ${executable}`);
+            getLogger().appendLine(`Error: Language server binary not found at ${executable}`);
             return;
         }
 
@@ -415,7 +415,7 @@ export class TLangClient implements ErrorHandler  {
             try {
                 fs.chmodSync(executable, 0o755);
             } catch (e) {
-                logger.appendLine(`Warning: Failed to set permissions on ${executable}: ${e}`);
+                getLogger().appendLine(`Warning: Failed to set permissions on ${executable}: ${e}`);
             }
 
             // On macOS, remove quarantine attribute to bypass Gatekeeper
@@ -437,12 +437,12 @@ export class TLangClient implements ErrorHandler  {
         console.log("executable: " + executable);
 
         const envVars = GetEnvironmentVariables();
-        logger.appendLine(`Environment PP: ${envVars['PP']}`);
-        logger.appendLine(`Environment FPCDIR: ${envVars['FPCDIR']}`);
-        logger.appendLine(`Environment LAZARUSDIR: ${envVars['LAZARUSDIR']}`);
+        getLogger().appendLine(`Environment PP: ${envVars['PP']}`);
+        getLogger().appendLine(`Environment FPCDIR: ${envVars['FPCDIR']}`);
+        getLogger().appendLine(`Environment LAZARUSDIR: ${envVars['LAZARUSDIR']}`);
 
         const fpcDir = envVars['FPCDIR'];
-        logger.appendLine("fpcDir: " + fpcDir);
+        getLogger().appendLine("fpcDir: " + fpcDir);
         if (!fpcDir || !fs.existsSync(fpcDir) || !fs.lstatSync(fpcDir).isDirectory()) {
             const selectFolder = vscode.l10n.t("Select Folder");
             const openSettings = vscode.l10n.t("Open Settings");
@@ -463,7 +463,7 @@ export class TLangClient implements ErrorHandler  {
         let serverOptions: ServerOptions;
         // if (process.env.DEBUG_MODE === 'true') {
         //     const port = 9898;
-        //     logger.appendLine(`Debug mode detected, connecting to language server on port ${port}`);
+        //     getLogger().appendLine(`Debug mode detected, connecting to language server on port ${port}`);
         //     serverOptions = () => {
         //         let socket = net.connect({ port });
         //         let result: StreamInfo = {
@@ -493,7 +493,7 @@ export class TLangClient implements ErrorHandler  {
 
         const projectContext = await this.projProvider.getDefaultLanguageServerContext();
         initializationOptions.updateByProjectContext(projectContext);
-        logger.appendLine(`Language server project context: ${projectContext.kind} ${projectContext.projectFile}`);
+        getLogger().appendLine(`Language server project context: ${projectContext.kind} ${projectContext.projectFile}`);
 
         const fpcSourceIncludeOptions = getFpcSourceIncludeOptions(envVars['FPCDIR']);
         for (const includeOption of fpcSourceIncludeOptions) {
@@ -501,7 +501,7 @@ export class TLangClient implements ErrorHandler  {
                 initializationOptions.fpcOptions.push(includeOption);
             }
         }
-        logger.appendLine(`Added ${fpcSourceIncludeOptions.length} FPC source include paths to language server context`);
+        getLogger().appendLine(`Added ${fpcSourceIncludeOptions.length} FPC source include paths to language server context`);
 
         if (projectContext.allowFpcGlobalUnitPaths) {
             const globalUnitPaths = await getGlobalUnitPaths(
@@ -516,9 +516,9 @@ export class TLangClient implements ErrorHandler  {
                     initializationOptions.fpcOptions.push(fu);
                 }
             });
-            logger.appendLine(`Added ${globalUnitPaths.length} FPC global unit paths to language server context`);
+            getLogger().appendLine(`Added ${globalUnitPaths.length} FPC global unit paths to language server context`);
         } else {
-            logger.appendLine('Skipped FPC global unit paths for Lazarus language server context');
+            getLogger().appendLine('Skipped FPC global unit paths for Lazarus language server context');
         }
 
         // client extensions configure their server
@@ -534,7 +534,7 @@ export class TLangClient implements ErrorHandler  {
             ]
         }
 
-        logger.appendLine('Language server document selector: objectpascal, pascal');
+        getLogger().appendLine('Language server document selector: objectpascal, pascal');
         this.client = new LanguageClient('nexusPascal.languageServer', 'Free Pascal Language Server', serverOptions, clientOptions);
     };
 
@@ -549,7 +549,7 @@ export class TLangClient implements ErrorHandler  {
         try {
             // Cannot stop if it's currently starting. Wait for it to become Running.
             if (this.client.state === State.Starting) {
-                logger.appendLine("Client is starting, waiting for it to become running before stopping...");
+                getLogger().appendLine("Client is starting, waiting for it to become running before stopping...");
                 let count = 0;
                 while (this.client.state === State.Starting && count < 50) {
                     await new Promise(resolve => setTimeout(resolve, 100)); // Wait up to 5 seconds
@@ -558,18 +558,18 @@ export class TLangClient implements ErrorHandler  {
             }
 
             if (this.client.state === State.Running) {
-                logger.appendLine("Stopping language server...");
+                getLogger().appendLine("Stopping language server...");
                 await this.client.stop(10000);
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            logger.appendLine(`Failed to stop language client: ${message}`);
+            getLogger().appendLine(`Failed to stop language client: ${message}`);
         } finally {
             try {
                 this.client?.dispose();
-                logger.appendLine("Language client disposed.");
+                getLogger().appendLine("Language client disposed.");
             } catch (e) {
-                logger.appendLine(`Error disposing client: ${e}`);
+                getLogger().appendLine(`Error disposing client: ${e}`);
             }
             this.client = undefined;
             // Clear decorations
@@ -601,19 +601,19 @@ export class TLangClient implements ErrorHandler  {
 
     private async _startInternal(): Promise<void> {
         if (!this.client) {
-            logger.appendLine("Cannot start: client is undefined. Call doInit first.");
+            getLogger().appendLine("Cannot start: client is undefined. Call doInit first.");
             return;
         }
         try {
             if (this.client.state === State.Running) {
                 return;
             }
-            logger.appendLine("Starting language client...");
+            getLogger().appendLine("Starting language client...");
             await this.client.start();
-            logger.appendLine("Language client started successfully.");
+            getLogger().appendLine("Language client started successfully.");
             await this.doOnReady();
         } catch (e) {
-            logger.appendLine(`Critical: Failed to start language client: ${e}`);
+            getLogger().appendLine(`Critical: Failed to start language client: ${e}`);
             throw e;
         }
     }

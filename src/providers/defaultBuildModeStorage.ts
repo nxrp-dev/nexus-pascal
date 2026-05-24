@@ -1,14 +1,20 @@
+import * as vscode from 'vscode';
+
 export class DefaultBuildModeStorage {
-    private static instance: DefaultBuildModeStorage;
+    private static instance?: DefaultBuildModeStorage;
     private defaultBuildModeId: string = '';
     
-    private constructor() {
+    private constructor(private readonly context: vscode.ExtensionContext) {
         this.loadFromGlobalState();
     }
     
+    public static initialize(context: vscode.ExtensionContext): void {
+        DefaultBuildModeStorage.instance = new DefaultBuildModeStorage(context);
+    }
+
     public static getInstance(): DefaultBuildModeStorage {
         if (!DefaultBuildModeStorage.instance) {
-            DefaultBuildModeStorage.instance = new DefaultBuildModeStorage();
+            throw new Error('DefaultBuildModeStorage has not been initialized.');
         }
         return DefaultBuildModeStorage.instance;
     }
@@ -28,10 +34,7 @@ export class DefaultBuildModeStorage {
 
     private loadFromGlobalState(): void {
         try {
-            const { FpcCommandManager } = require('../commands');
-            const context = FpcCommandManager.context;
-
-            const data = context.globalState.get('lazarusDefaultBuildMode');
+            const data = this.context.globalState.get('lazarusDefaultBuildMode');
             if (data && typeof data === 'string') {
                 this.defaultBuildModeId = data;
             }
@@ -42,10 +45,7 @@ export class DefaultBuildModeStorage {
 
     private saveToGlobalState(): void {
         try {
-            const { FpcCommandManager } = require('../commands');
-            const context = FpcCommandManager.context;
-
-            context.globalState.update('lazarusDefaultBuildMode', this.defaultBuildModeId);
+            this.context.globalState.update('lazarusDefaultBuildMode', this.defaultBuildModeId);
         } catch (error) {
             console.error('Error saving default build mode to global state:', error);
         }

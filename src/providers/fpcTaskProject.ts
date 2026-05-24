@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { CompileOption } from '../languageServer/options';
 import { LanguageServerProjectContext } from '../languageServer/projectContext';
 import { IProjectIntf, IProjectTask } from './projectIntf';
 import { DefaultBuildModeStorage } from './defaultBuildModeStorage';
+import { taskProvider } from './task';
 
 export class FpcTask implements IProjectTask {
     isInLpi: boolean = false;
@@ -63,7 +65,6 @@ export class FpcTask implements IProjectTask {
             await this.ensureTaskInTasksJson();
         }
         
-        const { taskProvider } = require('./task');
         return taskProvider.getTask(
             this.label,
             this.project.file,
@@ -81,7 +82,6 @@ export class FpcTask implements IProjectTask {
             const config = vscode.workspace.getConfiguration('tasks', vscode.Uri.file(workspaceRoot));
             const tasks = config.get<any[]>('tasks') || [];
 
-            const path = require('path');
             const existingTask = tasks.find(task => 
                 task.type === 'fpc' && path.basename(task.file) === path.basename(this.project.file)
             );
@@ -138,7 +138,6 @@ export class FpcTask implements IProjectTask {
                     const config = vscode.workspace.getConfiguration('tasks', vscode.Uri.file(workspaceRoot));
                     const tasks = config.get<any[]>('tasks') || [];
 
-                    const path = require('path');
                     let tasksUpdated = false;
                     for (const task of tasks) {
                         if (task.type === 'fpc') {

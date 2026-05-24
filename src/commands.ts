@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { client } from './extension';
+import { getClient, getProjectProvider } from './services/runtime';
 import { FpcItem } from './providers/fpcItem';
 import { ProjectType } from './providers/projectType';
 import { ProjectTemplateManager } from './providers/projectTemplate';
@@ -193,7 +193,7 @@ export class FpcCommandManager {
     };
 
     private codeComplete = (textEditor: vscode.TextEditor): void => {
-        client?.doCodeComplete(textEditor);
+        getClient()?.doCodeComplete(textEditor);
     };
 
     private async executeProjectTask(node: FpcItem | undefined, rebuild: boolean): Promise<void> {
@@ -324,11 +324,10 @@ export class FpcCommandManager {
     }
 
     private async refreshProjectExplorer(): Promise<void> {
-        const { projectProvider } = require('./extension');
-        projectProvider?.refresh();
+        getProjectProvider()?.refresh();
     }
 
     private async restartLanguageServer(): Promise<void> {
-        await client?.restart();
+        await getClient()?.restart();
     }
 }

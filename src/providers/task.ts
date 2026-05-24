@@ -8,7 +8,7 @@ import * as ChildProcess from "child_process";
 import path = require('path');
 import { TerminalEscape, TE_Style } from '../common/escape';
 import * as fs from 'fs';
-import { client } from '../extension';
+import { getClient } from '../services/runtime';
 import { DiagnosticSeverity } from 'vscode';
 import { LazarusBuildTerminal } from './lazarusBuildTerminal';
 import { BaseBuildTerminal } from './baseBuildTerminal';
@@ -73,7 +73,7 @@ export class FpcTaskProvider implements vscode.TaskProvider {
 	}
 
 	public refresh() {
-		client.restart();
+		getClient()?.restart();
 	}
 }
 
