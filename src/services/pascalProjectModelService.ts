@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as vscode from 'vscode';
 import { readLazarusBuildModes } from '../providers/lazarus';
 import {
     FpcBuildTarget,
@@ -10,16 +9,16 @@ import {
     PascalBuildTarget,
     PascalProject
 } from '../model/pascalProject';
-import { DefaultBuildModeStorage } from '../providers/defaultBuildModeStorage';
 import { FpcTaskDefinition, LazarusTaskDefinition } from '../providers/taskDefinitions';
+import { WorkspaceTasksService } from './workspaceTasksService';
 
 export class PascalProjectModelService {
-    public constructor(private readonly workspaceRoot: string) {
+    public constructor(private readonly workspaceTasks: WorkspaceTasksService) {
     }
 
     public loadProjects(): PascalProject[] {
         const projectsByFile = new Map<string, PascalProject>();
-        const tasks = this.getConfiguredTasks();
+        const tasks = this.workspaceTasks.getTasks();
 
         for (const taskDefinition of tasks) {
             if (taskDefinition.type === 'fpc') {
@@ -46,18 +45,7 @@ export class PascalProjectModelService {
     }
 
     public async setDefaultTarget(target: PascalBuildTarget): Promise<void> {
-        if (target.kind === 'lazarus') {
-            await this.setDefaultLazarusTarget(target);
-            return;
-        }
-
-        await this.setDefaultFpcTarget(target);
-    }
-
-    private getConfiguredTasks(): any[] {
-        return vscode.workspace
-            .getConfiguration('tasks', vscode.Uri.file(this.workspaceRoot))
-            .get<any[]>('tasks', []);
+        await this.workspaceTasks.setDefaultBuildTarget(target);
     }
 
     private collectFpcProject(taskDefinition: FpcTaskDefinition, projectsByFile: Map<string, PascalProject>): void {
@@ -65,8 +53,8 @@ export class PascalProjectModelService {
             return;
         }
 
-        const cwd = this.resolveWorkspacePath(taskDefinition.cwd);
-        const projectFile = this.resolveWorkspacePath(taskDefinition.file, cwd);
+        const cwd = this.workspaceTasks.resolveWorkspacePath(taskDefinition.cwd);
+        const projectFile = this.workspaceTasks.resolveWorkspacePath(taskDefinition.file, cwd);
         const project = this.getOrCreateFpcProject(projectFile, taskDefinition, projectsByFile);
         const label = taskDefinition.label || project.label;
 
@@ -87,8 +75,8 @@ export class PascalProjectModelService {
             return;
         }
 
-        const cwd = this.resolveWorkspacePath(taskDefinition.cwd);
-        const projectFile = this.resolveWorkspacePath(taskDefinition.project, cwd);
+        const cwd = this.workspaceTasks.resolveWorkspacePath(taskDefinition.cwd);
+        const projectFile = this.workspaceTasks.resolveWorkspacePath(taskDefinition.project, cwd);
         const project = this.getOrCreateLazarusProject(projectFile, projectsByFile);
         const buildMode = taskDefinition.buildMode || taskDefinition.label || 'Default';
         const label = taskDefinition.label || buildMode;
@@ -206,97 +194,11 @@ export class PascalProjectModelService {
     }
 
     private isDefaultLazarusTarget(projectFile: string, label: string): boolean {
-        return DefaultBuildModeStorage.getInstance().isDefaultBuildMode(`${projectFile}-${label}`);
-    }
-
-    private async setDefaultFpcTarget(target: FpcBuildTarget): Promise<void> {
-        DefaultBuildModeStorage.getInstance().setDefaultBuildMode('');
-
-        const tasks = this.getConfiguredTasks();
-        let tasksUpdated = false;
-
-        for (const task of tasks) {
-            const taskType = String(task?.type).toLowerCase();
-            if (taskType !== 'fpc' && taskType !== 'lazarus') {
-                continue;
-            }
-
-            const isTargetTask = taskType === 'fpc'
-                && task.label === target.label
-                && this.resolveWorkspacePath(task.file, this.resolveWorkspacePath(task.cwd)) === target.projectFile;
-            if (!task.group && !isTargetTask) {
-                continue;
-            }
-            if (!task.group) {
-                task.group = { kind: 'build' };
-            }
-
-            const desiredDefault = isTargetTask ? true : undefined;
-            if (task.group.isDefault !== desiredDefault) {
-                task.group.isDefault = desiredDefault;
-                tasksUpdated = true;
-            }
-        }
-
-        if (tasksUpdated) {
-            await this.updateConfiguredTasks(tasks);
-        }
-    }
-
-    private async setDefaultLazarusTarget(target: LazarusBuildTarget): Promise<void> {
-        DefaultBuildModeStorage.getInstance().setDefaultBuildMode(`${target.projectFile}-${target.label}`);
-
-        const tasks = this.getConfiguredTasks();
-        let tasksUpdated = false;
-
-        for (const task of tasks) {
-            const taskType = String(task?.type).toLowerCase();
-            if (taskType !== 'fpc' && taskType !== 'lazarus') {
-                continue;
-            }
-
-            const isTargetTask = taskType === 'lazarus'
-                && task.label === target.label
-                && this.resolveWorkspacePath(task.project, this.resolveWorkspacePath(task.cwd)) === target.projectFile;
-
-            if (!task.group && !isTargetTask) {
-                continue;
-            }
-            if (!task.group) {
-                task.group = { kind: 'build' };
-            }
-
-            if (typeof task.group === 'object' && task.group.isDefault !== (isTargetTask || undefined)) {
-                task.group.isDefault = isTargetTask || undefined;
-                tasksUpdated = true;
-            }
-        }
-
-        if (tasksUpdated) {
-            await this.updateConfiguredTasks(tasks);
-        }
-    }
-
-    private async updateConfiguredTasks(tasks: any[]): Promise<void> {
-        await vscode.workspace
-            .getConfiguration('tasks', vscode.Uri.file(this.workspaceRoot))
-            .update('tasks', tasks, vscode.ConfigurationTarget.WorkspaceFolder);
+        return this.workspaceTasks.isDefaultLazarusBuildMode(projectFile, label);
     }
 
     private createTargetId(projectFile: string, label: string, buildMode?: string): string {
         return `${projectFile}::${buildMode || label}`;
     }
 
-    private resolveWorkspacePath(value: string | undefined, basePath: string = this.workspaceRoot): string {
-        if (!value) {
-            return basePath;
-        }
-
-        const resolved = value.replace(/\$\{workspaceFolder\}/g, this.workspaceRoot);
-        if (path.isAbsolute(resolved)) {
-            return resolved;
-        }
-
-        return path.resolve(basePath, resolved);
-    }
 }

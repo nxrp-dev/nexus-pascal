@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { FpcProjectProvider } from '../providers/project';
-import { FpcTaskProvider, LazarusTaskProvider } from '../vscode/vscodeTaskProvider';
 import { PascalTaskFactory } from './pascalTaskFactory';
+import { WorkspaceTasksService } from './workspaceTasksService';
 
 export class DebugBuildService implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
@@ -9,7 +9,8 @@ export class DebugBuildService implements vscode.Disposable {
     public constructor(
         private readonly projectProvider: FpcProjectProvider,
         private readonly logger: vscode.OutputChannel,
-        private readonly taskFactory: PascalTaskFactory
+        private readonly taskFactory: PascalTaskFactory,
+        private readonly workspaceTasks: WorkspaceTasksService
     ) {}
 
     public register(): void {
@@ -56,16 +57,16 @@ export class DebugBuildService implements vscode.Disposable {
             return false;
         }
 
-        const tasks = this.getConfiguredTasks(folder);
+        const tasks = this.workspaceTasks.getAllTasks(folder?.uri);
         const resolvedTaskLabel = preLaunchTask === '${defaultBuildTask}'
-            ? this.getDefaultBuildTaskLabel(tasks)
+            ? this.workspaceTasks.getTaskLabel(this.workspaceTasks.getDefaultBuildTask(tasks))
             : preLaunchTask;
 
         if (!resolvedTaskLabel) {
             return false;
         }
 
-        return tasks.some(task => this.isNexusPascalTask(task) && this.getTaskLabel(task) === resolvedTaskLabel);
+        return tasks.some(task => this.workspaceTasks.isNexusPascalTask(task) && this.workspaceTasks.getTaskLabel(task) === resolvedTaskLabel);
     }
 
     private getPreLaunchTaskLabel(config: vscode.DebugConfiguration): string | undefined {
@@ -77,33 +78,6 @@ export class DebugBuildService implements vscode.Disposable {
 
         const label = preLaunchTask.trim();
         return label.length > 0 ? label : undefined;
-    }
-
-    private getConfiguredTasks(folder: vscode.WorkspaceFolder | undefined): any[] {
-        const workspaceFolder = folder ?? vscode.workspace.workspaceFolders?.[0];
-        const resource = workspaceFolder?.uri;
-        const config = vscode.workspace.getConfiguration('tasks', resource);
-
-        return config.get<any[]>('tasks') ?? [];
-    }
-
-    private isNexusPascalTask(task: any): boolean {
-        const taskType = String(task?.type ?? '').toLowerCase();
-        return taskType === FpcTaskProvider.FpcTaskType || taskType === LazarusTaskProvider.LazarusTaskType;
-    }
-
-    private getTaskLabel(task: any): string | undefined {
-        const label = task?.label ?? task?.taskName;
-        return typeof label === 'string' ? label : undefined;
-    }
-
-    private getDefaultBuildTaskLabel(tasks: any[]): string | undefined {
-        const defaultTask = tasks.find(task => {
-            const group = task?.group;
-            return typeof group === 'object' && group?.kind === 'build' && group?.isDefault === true;
-        });
-
-        return defaultTask ? this.getTaskLabel(defaultTask) : undefined;
     }
 
     private async checkAndBuildBeforeDebug(): Promise<void> {

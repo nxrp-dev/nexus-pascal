@@ -97,14 +97,14 @@ export class FpcProjectProvider implements vscode.TreeDataProvider<FpcItem> {
     public async checkDefaultAndRefresh(): Promise<void> {
         const oldCompileOption = this.defaultCompileOption;
         if (oldCompileOption === undefined) {
-            this.taskProvider.refresh();
+            this.taskProvider.notifyTaskConfigurationChanged();
             this.refresh();
             return;
         }
 
         const newCompileOption = await this.GetDefaultTaskOption();
         if (oldCompileOption.toOptionString() !== newCompileOption.toOptionString()) {
-            this.taskProvider.refresh();
+            this.taskProvider.notifyTaskConfigurationChanged();
         }
         this.refresh();
     }

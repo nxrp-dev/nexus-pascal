@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ExtensionPaths } from '../services/extensionPaths';
-import { getLogger } from '../services/runtime';
 
 export interface ServerExecutableInfo {
     executable: string;
@@ -74,11 +73,11 @@ export class ServerExecutableResolver {
     }
 }
 
-export function prepareServerExecutable(executable: string): boolean {
-    getLogger().appendLine(`Testing executable at: ${executable}`);
+export function prepareServerExecutable(executable: string, logger: vscode.OutputChannel): boolean {
+    logger.appendLine(`Testing executable at: ${executable}`);
 
     if (!fs.existsSync(executable)) {
-        getLogger().appendLine(`Error: Language server binary not found at ${executable}`);
+        logger.appendLine(`Error: Language server binary not found at ${executable}`);
         return false;
     }
 
@@ -86,7 +85,7 @@ export function prepareServerExecutable(executable: string): boolean {
         try {
             fs.chmodSync(executable, 0o755);
         } catch (error) {
-            getLogger().appendLine(`Warning: Failed to set permissions on ${executable}: ${error}`);
+            logger.appendLine(`Warning: Failed to set permissions on ${executable}: ${error}`);
         }
 
         if (process.platform === 'darwin') {

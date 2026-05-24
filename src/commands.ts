@@ -1,8 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { getClient, getProjectProvider } from './services/runtime';
 import { FpcItem } from './providers/fpcItem';
 import { ProjectType } from './providers/projectType';
 import { ProjectTemplateManager } from './providers/projectTemplate';
@@ -11,6 +9,8 @@ import { FpcTaskProvider, LazarusTaskProvider } from './vscode/vscodeTaskProvide
 import { ExtensionPaths } from './services/extensionPaths';
 import { PascalProjectModelService } from './services/pascalProjectModelService';
 import { PascalTaskFactory } from './services/pascalTaskFactory';
+import { LanguageClientHandle } from './services/languageClientHandle';
+import { WorkspaceTasksService } from './services/workspaceTasksService';
 
 const BUILD_LABELS = ['debug', 'release', 'Other ...'];
 const COMMANDS = {
@@ -27,7 +27,6 @@ const COMMANDS = {
 };
 
 export class FpcCommandManager {
-    private static _context: vscode.ExtensionContext;
     private readonly templateManager: ProjectTemplateManager;
 
     constructor(
@@ -36,20 +35,12 @@ export class FpcCommandManager {
         private readonly lazarusTaskProvider: LazarusTaskProvider,
         extensionPaths: ExtensionPaths,
         private readonly projectModelService: PascalProjectModelService,
-        private readonly taskFactory: PascalTaskFactory
+        private readonly taskFactory: PascalTaskFactory,
+        private readonly workspaceTasks: WorkspaceTasksService,
+        private readonly refreshProjects: () => void,
+        private readonly languageClient: LanguageClientHandle
     ) {
-        this.templateManager = new ProjectTemplateManager(workspaceRoot, extensionPaths);
-    }
-
-    public static setContext(context: vscode.ExtensionContext): void {
-        FpcCommandManager._context = context;
-    }
-
-    public static get context(): vscode.ExtensionContext {
-        if (!FpcCommandManager._context) {
-            throw new Error('Extension context not initialized');
-        }
-        return FpcCommandManager._context;
+        this.templateManager = new ProjectTemplateManager(workspaceRoot, extensionPaths, workspaceTasks);
     }
 
     public registerAll(context: vscode.ExtensionContext): void {
@@ -93,23 +84,16 @@ export class FpcCommandManager {
             return;
         }
 
-        const tasks = this.getConfiguredTasks();
-        const finalLabel = this.getUniqueTaskLabel(label, node, tasks);
+        const tasks = this.workspaceTasks.getAllTasks();
+        const finalLabel = this.workspaceTasks.getUniqueFpcTaskLabel(label, node.label, tasks);
         if (!finalLabel) {
+            vscode.window.showWarningMessage(`Task "${label}" already exists for this project. Skipping task creation.`);
             return;
         }
 
-        tasks.push({
-            label: finalLabel,
-            file: node.label,
-            type: 'fpc',
-            buildOption: {
-                syntaxMode: 'ObjFPC',
-                unitOutputDir: './out'
-            }
-        });
+        tasks.push(this.workspaceTasks.createFpcTask(finalLabel, node.label));
 
-        await this.updateConfiguredTasks(tasks);
+        await this.workspaceTasks.updateTasks(tasks);
     };
 
     private projectBuild = async (node?: FpcItem): Promise<void> => {
@@ -121,7 +105,7 @@ export class FpcCommandManager {
     };
 
     private projectOpen = async (node?: FpcItem): Promise<void> => {
-        const tasksFile = path.join(this.workspaceRoot, '.vscode', 'tasks.json');
+        const tasksFile = this.workspaceTasks.getTaskFilePath();
         if (!fs.existsSync(tasksFile)) {
             vscode.window.showErrorMessage('Task configuration file not found.');
             return;
@@ -190,7 +174,7 @@ export class FpcCommandManager {
             return;
         }
 
-        const projectFile = this.resolveWorkspacePath(node.file);
+        const projectFile = this.workspaceTasks.resolveWorkspacePath(node.file);
         if (!fs.existsSync(projectFile)) {
             vscode.window.showErrorMessage(`Project file not found: ${projectFile}`);
             return;
@@ -204,7 +188,7 @@ export class FpcCommandManager {
     };
 
     private codeComplete = (textEditor: vscode.TextEditor): void => {
-        getClient()?.doCodeComplete(textEditor);
+        this.languageClient.completeCode(textEditor);
     };
 
     private async executeProjectTask(node: FpcItem | undefined, rebuild: boolean): Promise<void> {
@@ -268,50 +252,6 @@ export class FpcCommandManager {
         return value?.trim() || undefined;
     }
 
-    private getConfiguredTasks(): any[] {
-        return this.getTasksConfiguration().get<any[]>('tasks', []);
-    }
-
-    private async updateConfiguredTasks(tasks: any[]): Promise<void> {
-        await this.getTasksConfiguration().update(
-            'tasks',
-            tasks,
-            vscode.ConfigurationTarget.WorkspaceFolder
-        );
-    }
-
-    private getTasksConfiguration(): vscode.WorkspaceConfiguration {
-        return vscode.workspace.getConfiguration('tasks', vscode.Uri.file(this.workspaceRoot));
-    }
-
-    private getUniqueTaskLabel(label: string, node: FpcItem, tasks: any[]): string | undefined {
-        const currentProjectName = path.basename(node.label, path.extname(node.label));
-        const duplicateTasks = tasks.filter(task => task.label === label);
-
-        if (duplicateTasks.length === 0) {
-            return label;
-        }
-
-        const hasDifferentProjectTask = duplicateTasks.some(task => {
-            const taskFile = typeof task.file === 'string' ? task.file : '';
-            const taskProjectName = path.basename(taskFile, path.extname(taskFile));
-            return taskProjectName !== currentProjectName;
-        });
-
-        if (!hasDifferentProjectTask) {
-            vscode.window.showWarningMessage(`Task "${label}" already exists for this project. Skipping task creation.`);
-            return undefined;
-        }
-
-        const projectLabel = `${label}-${currentProjectName}`;
-        if (tasks.some(task => task.label === projectLabel)) {
-            vscode.window.showWarningMessage(`Task "${projectLabel}" already exists. Skipping task creation.`);
-            return undefined;
-        }
-
-        return projectLabel;
-    }
-
     private findTaskSelection(document: vscode.TextDocument, label?: string): vscode.Selection | undefined {
         if (!label) {
             return undefined;
@@ -326,18 +266,11 @@ export class FpcCommandManager {
         return new vscode.Selection(position, position);
     }
 
-    private resolveWorkspacePath(filePath: string): string {
-        if (path.isAbsolute(filePath)) {
-            return filePath;
-        }
-        return path.join(this.workspaceRoot, filePath);
-    }
-
     private async refreshProjectExplorer(): Promise<void> {
-        getProjectProvider()?.refresh();
+        this.refreshProjects();
     }
 
     private async restartLanguageServer(): Promise<void> {
-        await getClient()?.restart();
+        await this.languageClient.restart();
     }
 }

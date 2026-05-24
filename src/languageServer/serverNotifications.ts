@@ -8,7 +8,6 @@ import {
     ShowMessageNotification,
     ShowMessageParams
 } from 'vscode-languageclient/node';
-import { getLogger } from '../services/runtime';
 import { InactiveRegionNotification, InactiveRegions } from './inactiveRegions';
 import { isFpcSourceDiagnosticMessage } from './serverDiagnostics';
 
@@ -24,7 +23,8 @@ const SetSelectionNotification: NotificationType<SetSelectionParams> =
 export class ServerNotifications {
     public constructor(
         private readonly client: LanguageClient,
-        private readonly inactiveRegions: InactiveRegions
+        private readonly inactiveRegions: InactiveRegions,
+        private readonly logger: vscode.OutputChannel
     ) {
     }
 
@@ -65,7 +65,7 @@ export class ServerNotifications {
         const msg = message.replace(/^\u26a0\ufe0f\s*/u, '');
 
         if (isFpcSourceDiagnosticMessage(msg)) {
-            getLogger().appendLine(`Suppressed FPC source diagnostic: ${msg}`);
+            this.logger.appendLine(`Suppressed FPC source diagnostic: ${msg}`);
             return;
         }
 
@@ -89,7 +89,7 @@ export class ServerNotifications {
             return;
         }
 
-        getLogger().appendLine(message);
+        this.logger.appendLine(message);
         vscode.window.showErrorMessage(message);
     }
 

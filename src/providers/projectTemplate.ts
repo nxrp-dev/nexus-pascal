@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ExtensionPaths } from '../services/extensionPaths';
+import { WorkspaceTasksService } from '../services/workspaceTasksService';
 
 export interface ProjectTemplate {
     name: string;
@@ -26,7 +27,8 @@ export class ProjectTemplateManager {
 
     constructor(
         private readonly workspaceRoot: string,
-        private readonly extensionPaths: ExtensionPaths
+        private readonly extensionPaths: ExtensionPaths,
+        private readonly workspaceTasks: WorkspaceTasksService
     ) {
     }
 
@@ -258,7 +260,7 @@ export class ProjectTemplateManager {
     }
 
     private prepareTaskForMerge = (AExistingTasks: any[], ANewTask: any): any => {
-        if (!this.hasDefaultBuildTask(AExistingTasks) || !this.isDefaultBuildTask(ANewTask)) {
+        if (!this.workspaceTasks.hasDefaultBuildTask(AExistingTasks) || !this.workspaceTasks.isDefaultBuildTask(ANewTask)) {
             return ANewTask;
         }
 
@@ -271,14 +273,6 @@ export class ProjectTemplateManager {
 
         return lTask;
     };
-
-    private hasDefaultBuildTask(ATasks: any[]): boolean {
-        return ATasks.some((ATask) => this.isDefaultBuildTask(ATask));
-    }
-
-    private isDefaultBuildTask(ATask: any): boolean {
-        return typeof ATask?.group === 'object' && ATask.group.kind === 'build' && ATask.group.isDefault === true;
-    }
 
     private walkFiles(ARootDir: string, ACallback: (ASourceFile: string, ARelativePath: string) => void): void {
         this.walkFilesFrom(ARootDir, ARootDir, ACallback);

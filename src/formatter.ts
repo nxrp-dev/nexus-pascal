@@ -1,83 +1,61 @@
-import * as vscode from 'vscode';
-import path = require('path');
-import { configuration } from './common/configuration';
-import { env } from 'process';
 import * as fs from 'fs';
-import { getClient, getLogger } from './services/runtime';
+import { env } from 'process';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { configuration } from './common/configuration';
+import { PascalLanguageClientService } from './languageServer/client';
 import { ExtensionPaths } from './services/extensionPaths';
-import {
-    ExecuteCommandRequest,
-    ExecuteCommandParams
-} from 'vscode-languageclient/node';
 
-export class JediFormatter {
-    private default_cfg: string;
-    private is_win: boolean = true;
+export class PascalFormatterService {
+    private defaultConfigPath: string;
+    private readonly isWindows: boolean;
 
-    constructor(private readonly extensionPaths: ExtensionPaths) {
-        const plat: NodeJS.Platform = process.platform;
-        this.is_win = plat === 'win32';
+    public constructor(
+        private readonly extensionPaths: ExtensionPaths,
+        private readonly getClient: () => PascalLanguageClientService | undefined,
+        private readonly logger: vscode.OutputChannel
+    ) {
+        this.isWindows = process.platform === 'win32';
+        this.defaultConfigPath = path.resolve(this.extensionPaths.getFilePath('bin'), 'jcfsettings.cfg');
 
-        // 设置默认配置文件路径
-        this.default_cfg = path.resolve(this.extensionPaths.getFilePath("bin"), 'jcfsettings.cfg');
-        let cfg_path = '';
-        if (this.is_win) {
-            cfg_path = env.LOCALAPPDATA + '/lazarus/jcfsettings.cfg';
-        } else {
-            cfg_path = env.HOME + '/.lazarus/jcfsettings.cfg';
-        }
-        if (fs.existsSync(cfg_path)) {
-            this.default_cfg = cfg_path;
+        const userConfigPath = this.isWindows
+            ? `${env.LOCALAPPDATA}/lazarus/jcfsettings.cfg`
+            : `${env.HOME}/.lazarus/jcfsettings.cfg`;
+        if (fs.existsSync(userConfigPath)) {
+            this.defaultConfigPath = userConfigPath;
         }
     }
 
-    getCfgConfig(): string {
-        let cfg = configuration.get<string>("format.configPath", "");
-        if (cfg == "") {
-            cfg = this.default_cfg;
-        }
-        return cfg;
+    public getCfgConfig(): string {
+        const configuredPath = configuration.get<string>('format.configPath', '');
+        return configuredPath || this.defaultConfigPath;
     }
 
-    doInit() {
-        let _this = this;
-        let enable = configuration.get<boolean>('format.enabled', true);
-        if (!enable) return;
+    public doInit(): void {
+        if (!configuration.get<boolean>('format.enabled', true)) {
+            return;
+        }
 
-        // 使用 pasls.formatCode 命令进行格式化
         vscode.languages.registerDocumentFormattingEditProvider('objectpascal', {
-            async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
-                const logger = getLogger();
-
+            provideDocumentFormattingEdits: async (document: vscode.TextDocument): Promise<vscode.TextEdit[]> => {
                 try {
-                    // 检查 LSP 客户端是否可用
-                    const client = getClient();
-
-                    if (!client || !client['client']) {
-                        logger.appendLine('Language server client is not available for formatting');
+                    const client = this.getClient();
+                    if (!client) {
+                        this.logger.appendLine('Language server client is not available for formatting');
                         return [];
                     }
 
                     const fileUri = document.uri.toString();
-                    const cfgPath = _this.getCfgConfig();
-                    const cfgUri =  vscode.Uri.file(cfgPath).toString();
+                    const cfgUri = vscode.Uri.file(this.getCfgConfig()).toString();
 
-                    // 调用 pasls.formatCode 命令
-                    const req: ExecuteCommandParams = {
-                        command: "pasls.formatCode",
-                        arguments: [fileUri, cfgUri]
-                    };
-
-                    logger.appendLine(`Formatting with pasls.formatCode: ${fileUri}`);
-                    await client['client']?.sendRequest(ExecuteCommandRequest.type, req);
-
+                    this.logger.appendLine(`Formatting with pasls.formatCode: ${fileUri}`);
+                    await client.formatCode(fileUri, cfgUri);
                     return [];
                 } catch (error) {
-                    logger.appendLine(`Format error: ${error}`);
+                    this.logger.appendLine(`Format error: ${error}`);
                     return [];
                 }
             }
         });
     }
 }
-

@@ -1,29 +1,31 @@
 import * as vscode from 'vscode';
 import { FpcCommandManager } from '../commands';
-import { JediFormatter } from '../formatter';
+import { PascalFormatterService } from '../formatter';
 import * as MyCodeAction from '../languageServer/codeaction';
-import { TLangClient } from '../languageServer/client';
+import { PascalLanguageClientService } from '../languageServer/client';
 import { FpcProjectProvider } from '../providers/project';
 import { DefaultBuildModeStorage } from '../providers/defaultBuildModeStorage';
 import { FpcTaskProvider, LazarusTaskProvider } from '../vscode/vscodeTaskProvider';
 import { DebugBuildService } from './debugBuildService';
 import { EditorIntegrationService } from './editorIntegrationService';
 import { ExtensionPaths } from './extensionPaths';
+import { LanguageClientHandle } from './languageClientHandle';
 import { PascalBuildTargetContextFactory } from './pascalBuildTargetContextFactory';
 import { PascalProjectModelService } from './pascalProjectModelService';
 import { PascalProjectTreeFactory } from './pascalProjectTreeFactory';
 import { PascalTaskFactory } from './pascalTaskFactory';
-import * as runtime from './runtime';
+import { WorkspaceTasksService } from './workspaceTasksService';
 
 export class NexusPascalExtension implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
-    private client?: TLangClient;
-    private formatter?: JediFormatter;
+    private client?: PascalLanguageClientService;
+    private formatter?: PascalFormatterService;
 
     private constructor(
         private readonly context: vscode.ExtensionContext,
         private readonly workspaceRoot: string,
         private readonly logger: vscode.OutputChannel,
+        private readonly languageClient: LanguageClientHandle,
         private readonly projectProvider: FpcProjectProvider,
         private readonly commandManager: FpcCommandManager,
         private readonly taskProvider: FpcTaskProvider,
@@ -42,13 +44,14 @@ export class NexusPascalExtension implements vscode.Disposable {
         const logger = vscode.window.createOutputChannel('Nexus Pascal');
         logger.appendLine('Nexus Pascal extension activating...');
 
-        FpcCommandManager.setContext(context);
         DefaultBuildModeStorage.initialize(context);
 
         const extensionPaths = new ExtensionPaths(context);
-        const taskProvider = new FpcTaskProvider(workspaceRoot);
+        const languageClient = new LanguageClientHandle();
+        const workspaceTasks = new WorkspaceTasksService(workspaceRoot);
+        const taskProvider = new FpcTaskProvider(workspaceRoot, () => languageClient.restart());
         const lazarusTaskProvider = new LazarusTaskProvider(workspaceRoot);
-        const projectModelService = new PascalProjectModelService(workspaceRoot);
+        const projectModelService = new PascalProjectModelService(workspaceTasks);
         const buildTargetContextFactory = new PascalBuildTargetContextFactory(workspaceRoot);
         const taskFactory = new PascalTaskFactory(taskProvider, lazarusTaskProvider);
         const treeFactory = new PascalProjectTreeFactory();
@@ -65,15 +68,19 @@ export class NexusPascalExtension implements vscode.Disposable {
             lazarusTaskProvider,
             extensionPaths,
             projectModelService,
-            taskFactory
+            taskFactory,
+            workspaceTasks,
+            () => projectProvider.refresh(),
+            languageClient
         );
-        const editorIntegrationService = new EditorIntegrationService(() => runtime.getClient(), logger);
-        const debugBuildService = new DebugBuildService(projectProvider, logger, taskFactory);
+        const editorIntegrationService = new EditorIntegrationService(() => languageClient.current, logger);
+        const debugBuildService = new DebugBuildService(projectProvider, logger, taskFactory, workspaceTasks);
 
         const app = new NexusPascalExtension(
             context,
             workspaceRoot,
             logger,
+            languageClient,
             projectProvider,
             commandManager,
             taskProvider,
@@ -83,10 +90,6 @@ export class NexusPascalExtension implements vscode.Disposable {
             debugBuildService
         );
 
-        runtime.setLogger(logger);
-        runtime.setProjectProvider(projectProvider);
-        runtime.setCommandManager(commandManager);
-
         await app.activate();
         return app;
     }
@@ -94,12 +97,9 @@ export class NexusPascalExtension implements vscode.Disposable {
     public dispose(): void {
         this.disposables.splice(0).forEach(disposable => disposable.dispose());
         this.client?.stop();
+        this.languageClient.set(undefined);
         this.projectProvider.dispose();
         this.logger.dispose();
-        runtime.setClient(undefined);
-        runtime.setFormatter(undefined);
-        runtime.setProjectProvider(undefined);
-        runtime.setCommandManager(undefined);
     }
 
     private async activate(): Promise<void> {
@@ -123,8 +123,8 @@ export class NexusPascalExtension implements vscode.Disposable {
 
     private async initializeLanguageServices(): Promise<void> {
         try {
-            this.client = new TLangClient(this.projectProvider, this.extensionPaths);
-            runtime.setClient(this.client);
+            this.client = new PascalLanguageClientService(this.projectProvider, this.extensionPaths, this.logger);
+            this.languageClient.set(this.client);
             await this.client.doInit();
             await this.client.start();
             this.logger.appendLine('Language server initialized successfully');
@@ -134,8 +134,7 @@ export class NexusPascalExtension implements vscode.Disposable {
         }
 
         try {
-            this.formatter = new JediFormatter(this.extensionPaths);
-            runtime.setFormatter(this.formatter);
+            this.formatter = new PascalFormatterService(this.extensionPaths, () => this.languageClient.current, this.logger);
             this.formatter.doInit();
             this.logger.appendLine('Formatter initialized successfully');
         } catch (error) {

@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { configuration } from '../common/configuration';
-import type { TLangClient } from '../languageServer/client';
+import type { PascalLanguageClientService } from '../languageServer/client';
 
 export class EditorIntegrationService implements vscode.Disposable {
     private readonly disposables: vscode.Disposable[] = [];
 
     public constructor(
-        private readonly getClient: () => TLangClient | undefined,
+        private readonly getClient: () => PascalLanguageClientService | undefined,
         private readonly logger: vscode.OutputChannel
     ) {}
 

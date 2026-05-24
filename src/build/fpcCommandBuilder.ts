@@ -1,49 +1,81 @@
-import { CompileOption } from '../languageServer/options';
+import { BuildOption, FpcTaskDefinition } from '../providers/taskDefinitions';
 import { BuildMode } from '../vscode/vscodeTaskTypes';
-import { FpcTaskDefinition } from '../providers/taskDefinitions';
-
-export interface FpcBuildCommand {
-    compilerPath: string;
-    args: string[];
-}
+import { BuildCommand } from './buildCommand';
 
 export class FpcCommandBuilder {
-    public createCommand(name: string, file: string, taskDefinition: FpcTaskDefinition, buildMode: BuildMode): FpcBuildCommand {
-        let buildOptionString = '';
-        let realDefinition = taskDefinition;
-        if (realDefinition === undefined) {
-            realDefinition = taskDefinition;
-        }
-        if (realDefinition?.buildOption) {
-            const opt = new CompileOption(realDefinition);
-            buildOptionString = opt.toOptionString();
-        }
-        if (!buildOptionString) {
-            buildOptionString = '';
+    public createCommand(cwd: string, file: string, taskDefinition: FpcTaskDefinition, buildMode: BuildMode): BuildCommand {
+        const compilerPath = process.env['PP'] || 'fpc';
+        const args = this.createArgs(file, taskDefinition, buildMode);
+
+        return {
+            executable: compilerPath,
+            args,
+            cwd,
+            compilerKind: 'fpc'
+        };
+    }
+
+    private createArgs(file: string, taskDefinition: FpcTaskDefinition, buildMode: BuildMode): string[] {
+        const args: string[] = [];
+        const mainFile = taskDefinition.file || file;
+
+        if (mainFile) {
+            args.push(mainFile);
         }
 
-        if (!realDefinition) {
-            realDefinition = {
-                type: 'fpc',
-                file: file
-            };
-        }
-        buildOptionString += '-vq ';
+        args.push(...this.createBuildOptionArgs(taskDefinition.buildOption));
+        args.push('-vq');
 
-        let compilerPath = process.env['PP'];
-        if (compilerPath === '') {
-            compilerPath = 'fpc';
-        }
-
-        const mainFileForCmd = taskDefinition?.file;
-        const args = `${mainFileForCmd} ${buildOptionString}`.split(' ');
-        if (!taskDefinition?.isLazarusProject && buildMode === BuildMode.rebuild) {
+        if (!taskDefinition.isLazarusProject && buildMode === BuildMode.rebuild) {
             args.push('-B');
         }
 
-        return {
-            compilerPath: compilerPath!,
-            args
-        };
+        return args;
+    }
+
+    private createBuildOptionArgs(buildOption: BuildOption | undefined): string[] {
+        if (!buildOption) {
+            return [];
+        }
+
+        const args: string[] = [];
+
+        if (buildOption.targetOS) {
+            args.push(`-T${buildOption.targetOS}`);
+        }
+        if (buildOption.targetCPU) {
+            args.push(`-P${buildOption.targetCPU}`);
+        }
+        if (buildOption.forceRebuild) {
+            args.push('-B');
+        }
+        if (buildOption.msgIgnore && buildOption.msgIgnore.length > 0) {
+            args.push(`-vm${buildOption.msgIgnore.join(',')}`);
+        }
+        if (buildOption.outputFile) {
+            args.push(`-o${buildOption.outputFile}`);
+        }
+
+        buildOption.searchPath?.forEach(searchPath => args.push(`-Fu${searchPath}`));
+        buildOption.includePath?.forEach(includePath => args.push(`-Fi${includePath}`));
+        buildOption.libPath?.forEach(libPath => args.push(`-Fl${libPath}`));
+
+        if (buildOption.unitOutputDir) {
+            args.push(`-FU${this.resolveUnitOutputDir(buildOption)}`);
+        }
+        if (buildOption.optimizationLevel) {
+            args.push(`-O${buildOption.optimizationLevel}`);
+        }
+        if (buildOption.syntaxMode) {
+            args.push(`-M${buildOption.syntaxMode}`);
+        }
+
+        return args;
+    }
+
+    private resolveUnitOutputDir(buildOption: BuildOption): string {
+        return buildOption.unitOutputDir!
+            .replace(/\$\{targetOS\}/g, buildOption.targetOS || process.platform)
+            .replace(/\$\{targetCPU\}/g, buildOption.targetCPU || process.arch);
     }
 }

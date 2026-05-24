@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getClient } from '../services/runtime';
 import { FpcTaskDefinition, LazarusTaskDefinition, isFpcTaskDefinition, isLazarusTaskDefinition } from '../providers/taskDefinitions';
 import { FpcTask, LazarusTask } from './vscodeTask';
 import { FPC_TASK_TYPE, LAZARUS_TASK_TYPE } from './vscodeTaskTypes';
@@ -14,7 +13,11 @@ export class FpcTaskProvider implements vscode.TaskProvider {
         return this.defineMap.get(name);
     }
 
-    constructor(private workspaceRoot: string, private cwd: string | undefined = undefined) {
+    constructor(
+        private workspaceRoot: string,
+        private readonly onTaskConfigurationChanged: () => void,
+        private cwd: string | undefined = undefined
+    ) {
     }
 
     public async clean() {
@@ -64,8 +67,8 @@ export class FpcTaskProvider implements vscode.TaskProvider {
         return new FpcTask(this.cwd ? this.cwd : this.workspaceRoot, name, file!, definition!);
     }
 
-    public refresh() {
-        getClient()?.restart();
+    public notifyTaskConfigurationChanged(): void {
+        this.onTaskConfigurationChanged();
     }
 }
 
