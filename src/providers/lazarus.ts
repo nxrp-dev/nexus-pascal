@@ -19,11 +19,26 @@ export function readLazarusBuildModes(file: string): LazarusBuildModeInfo[] {
 
     const content = fs.readFileSync(file, 'utf8');
     const document = parser.parse(content);
-    const items = asArray(document?.CONFIG?.ProjectOptions?.BuildModes?.Item);
+    const items = getBuildModeItems(document?.CONFIG?.ProjectOptions?.BuildModes);
 
     return items
         .map((item: any) => readBuildMode(item))
         .filter((mode: LazarusBuildModeInfo | undefined): mode is LazarusBuildModeInfo => mode !== undefined);
+}
+
+function getBuildModeItems(buildModes: any): any[] {
+    if (!buildModes || typeof buildModes !== 'object') {
+        return [];
+    }
+
+    const items: any[] = [];
+    for (const [key, value] of Object.entries(buildModes)) {
+        if (key === 'Item' || /^Item\d+$/i.test(key)) {
+            items.push(...asArray(value));
+        }
+    }
+
+    return items;
 }
 
 function readBuildMode(item: any): LazarusBuildModeInfo | undefined {

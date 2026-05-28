@@ -2,9 +2,11 @@ import * as ChildProcess from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { readLazarusBuildModes } from '../providers/lazarus';
 import { LazarusTaskDefinition } from '../providers/taskDefinitions';
 import { BuildMode } from '../vscode/vscodeTaskTypes';
 import { BuildCommand } from './buildCommand';
+import { resolveWorkspacePath } from './taskVariableResolver';
 
 export class LazarusCommandBuilder {
     private lazbuildPath: string | undefined;
@@ -24,7 +26,7 @@ export class LazarusCommandBuilder {
         const projectFile = taskDefinition.project
             ? this.resolveProjectFile(cwd, taskDefinition.project)
             : '';
-        const selectedBuildMode = taskDefinition.buildMode || name;
+        const selectedBuildMode = this.getValidBuildMode(projectFile, taskDefinition.buildMode || name);
         const forceRebuild = taskDefinition.forceRebuild === true || buildMode === BuildMode.rebuild;
         const args: string[] = [];
 
@@ -127,6 +129,22 @@ export class LazarusCommandBuilder {
     }
 
     private resolveProjectFile(cwd: string, projectFile: string): string {
-        return path.isAbsolute(projectFile) ? projectFile : path.join(cwd, projectFile);
+        return resolveWorkspacePath(cwd, projectFile) || '';
+    }
+
+    private getValidBuildMode(projectFile: string, requestedBuildMode: string | undefined): string | undefined {
+        const buildMode = requestedBuildMode?.trim();
+        if (!buildMode || buildMode === 'Default' || !projectFile) {
+            return buildMode;
+        }
+
+        const modes = readLazarusBuildModes(projectFile);
+        if (modes.length === 0) {
+            return undefined;
+        }
+
+        return modes.some(mode => mode.name.toLowerCase() === buildMode.toLowerCase())
+            ? buildMode
+            : undefined;
     }
 }

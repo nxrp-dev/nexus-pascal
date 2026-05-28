@@ -123,7 +123,13 @@ export class NexusPascalExtension implements vscode.Disposable {
 
     private async initializeLanguageServices(): Promise<void> {
         try {
-            this.client = new PascalLanguageClientService(this.projectProvider, this.extensionPaths, this.logger);
+            const serverStoragePath = this.context.storageUri?.fsPath ?? this.context.globalStorageUri.fsPath;
+            this.client = new PascalLanguageClientService(
+                this.projectProvider,
+                this.extensionPaths,
+                this.logger,
+                serverStoragePath
+            );
             this.languageClient.set(this.client);
             await this.client.doInit();
             await this.client.start();

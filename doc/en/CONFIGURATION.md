@@ -13,7 +13,7 @@ Setting | Type | Description |
 ## Language Server Settings
 Setting | Type | Description |
 --------|------|-------------|
-`nexusPascal.pasls.path` | string | Pascal Language Server (pasls) file location
+`nexusPascal.languageServer.executablePath` | string | Full path to the language server executable to launch. Set this to `NexusLS.exe`/`nexusls` to override the bundled server; leave empty to use the bundled server.
 `nexusPascal.languageServer.FPCSourceDirectory` | string | Free Pascal source directory used by the language server for RTL/FCL navigation (e.g., `C:\lazarus\fpc\3.2.2\source`, `/usr/local/share/fpcsrc`)
 `nexusPascal.lsp.trace.server` | string | Trace communication between VS Code and pascal language server
 `nexusPascal.lsp.initializationOptions.program` | string | Main program file. If not specified, uses current file

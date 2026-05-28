@@ -15,10 +15,11 @@ export class ServerExecutableResolver {
     }
 
     public resolve(): ServerExecutableInfo {
-        let extensionProcessName = 'pasls';
+        let bundledServerRelativePath = 'pasls';
         const configuredPath = vscode.workspace
             .getConfiguration('nexusPascal.languageServer')
             .get<string>('executablePath');
+        const configuredExecutable = configuredPath?.trim();
 
         const platform = process.platform;
         const arch = process.arch;
@@ -28,13 +29,13 @@ export class ServerExecutableResolver {
         if (arch === 'x64') {
             targetCPU = 'x86_64';
             if (platform === 'win32') {
-                extensionProcessName = 'pasls-x86_64-win64/pasls.exe';
+                bundledServerRelativePath = 'pasls-x86_64-win64/pasls.exe';
                 targetOS = 'win64';
             } else if (platform === 'linux') {
-                extensionProcessName = 'pasls-x86_64-linux/pasls';
+                bundledServerRelativePath = 'pasls-x86_64-linux/pasls';
                 targetOS = 'linux';
             } else if (platform === 'darwin') {
-                extensionProcessName = 'pasls-x86_64-darwin/pasls';
+                bundledServerRelativePath = 'pasls-x86_64-darwin/pasls';
                 targetOS = 'darwin';
             } else {
                 throw new Error('Invalid platform');
@@ -42,14 +43,14 @@ export class ServerExecutableResolver {
         } else if (arch === 'arm64') {
             targetCPU = 'aarch64';
             if (platform === 'linux') {
-                extensionProcessName = 'pasls-aarch64-linux/pasls';
+                bundledServerRelativePath = 'pasls-aarch64-linux/pasls';
                 targetOS = 'linux';
             } else if (platform === 'darwin') {
-                extensionProcessName = 'pasls-aarch64-darwin/pasls';
+                bundledServerRelativePath = 'pasls-aarch64-darwin/pasls';
                 targetOS = 'darwin';
             } else if (platform === 'win32') {
                 targetOS = 'win64';
-                extensionProcessName = 'pasls-x86_64-win64/pasls.exe';
+                bundledServerRelativePath = 'pasls-x86_64-win64/pasls.exe';
             } else {
                 throw new Error('Invalid platform');
             }
@@ -58,15 +59,15 @@ export class ServerExecutableResolver {
         }
 
         if (process.env.DEBUG_MODE === 'true') {
-            extensionProcessName = platform === 'win32'
+            bundledServerRelativePath = platform === 'win32'
                 ? 'debug/paslsproxy.exe'
                 : 'debug/paslsproxy';
         }
 
         return {
-            executable: configuredPath && configuredPath.length > 0
-                ? configuredPath
-                : path.resolve(this.extensionPaths.getFilePath('bin'), extensionProcessName),
+            executable: configuredExecutable && configuredExecutable.length > 0
+                ? configuredExecutable
+                : path.resolve(this.extensionPaths.getFilePath('bin'), bundledServerRelativePath),
             targetOS,
             targetCPU
         };

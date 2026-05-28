@@ -35,7 +35,8 @@ export class PascalLanguageClientService implements ErrorHandler {
     public constructor(
         public projProvider: FpcProjectProvider,
         private readonly extensionPaths: ExtensionPaths,
-        private readonly logger: vscode.OutputChannel
+        private readonly logger: vscode.OutputChannel,
+        private readonly serverStoragePath?: string
     ) {
         this.executableResolver = new ServerExecutableResolver(this.extensionPaths);
     }
@@ -80,7 +81,7 @@ export class PascalLanguageClientService implements ErrorHandler {
 
         console.log('executable: ' + executable);
 
-        const envVars = getServerEnvironment();
+        const envVars = getServerEnvironment(this.serverStoragePath);
         this.logger.appendLine(`Environment PP: ${envVars['PP']}`);
         this.logger.appendLine(`Environment FPCDIR: ${envVars['FPCDIR']}`);
         this.logger.appendLine(`Environment LAZARUSDIR: ${envVars['LAZARUSDIR']}`);

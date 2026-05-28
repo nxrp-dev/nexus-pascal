@@ -8,7 +8,7 @@ export interface ServerEnvironment {
     [key: string]: string | undefined;
 }
 
-export function getServerEnvironment(): ServerEnvironment {
+export function getServerEnvironment(serverStoragePath?: string): ServerEnvironment {
     const userEnvironmentVariables: ServerEnvironment = {};
     const toolchainConfig = workspace.getConfiguration('nexusPascal.toolchain');
     const compilerPath = toolchainConfig.get<string>('compilerPath');
@@ -32,6 +32,9 @@ export function getServerEnvironment(): ServerEnvironment {
     }
     if (fpcSourceDirectory) {
         userEnvironmentVariables['FPCDIR'] = fpcSourceDirectory;
+    }
+    if (serverStoragePath) {
+        userEnvironmentVariables['NEXUSLS_CACHE_DIR'] = serverStoragePath;
     }
 
     if (userEnvironmentVariables['PP']) {

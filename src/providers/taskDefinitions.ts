@@ -24,10 +24,7 @@ export class FpcTaskDefinition implements vscode.TaskDefinition {
 	cwd?: string;
 	buildOption?: BuildOption;
 
-	isLazarusProject?: boolean;
 	isLazarusBuildMode?: boolean;
-	lazarusProjectFile?: string;
-	buildMode?: string;
 }
 
 export class LazarusTaskDefinition implements vscode.TaskDefinition {

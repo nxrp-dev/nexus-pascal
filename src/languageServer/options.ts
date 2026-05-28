@@ -1,9 +1,7 @@
-import internal = require('stream');
 import * as vscode from 'vscode';
-import *  as fs from 'fs';
 import * as path from 'path';
 import { LanguageServerProjectContext } from './projectContext';
-import { configuration } from '../common/configuration';
+import { createBuildOptionArguments } from '../build/buildOptionArguments';
 import { BuildOption, FpcTaskDefinition } from '../providers/taskDefinitions';
 export class CompileOption {
     /**
@@ -13,11 +11,6 @@ export class CompileOption {
     public cwd: string = "";
     public label: string = '';
     public file: string = '';
-    public presentation = {
-        showReuseMessage: false,
-        clear: true,
-        revealProblems: "onProblem"
-    };
     public buildOption?:BuildOption;
     private allowBuildOptionCustomOptions = false;
 
@@ -60,66 +53,17 @@ export class CompileOption {
 
     }
 
-    toOptionString() {
-        let s: string = '';
-        if (this.buildOption?.targetOS) {
-            s += "-T" + this.buildOption!.targetOS + " ";
-        }
-        if (this.buildOption?.targetCPU) {
-            s += "-P" + this.buildOption!.targetCPU + " ";
-        }
-        if(this.buildOption?.forceRebuild){
-            s +='-B '
-        }
-        if(this.buildOption?.msgIgnore && this.buildOption.msgIgnore.length>0){
-            s+='-vm'+this.buildOption.msgIgnore.join(',')+' ';
-        }
-        if (this.buildOption?.outputFile) {
-            s += "-o" + this.buildOption!.outputFile + " ";
-        }
-
-        this.buildOption?.searchPath?.forEach((e) => {
-            s += "-Fu" + e + " ";
+    toOptionArray(): string[] {
+        return createBuildOptionArguments(this.cwd, this.buildOption, {
+            includeCustomOptions: this.allowBuildOptionCustomOptions
         });
-        this.buildOption?.includePath?.forEach((e) => {
-            s += "-Fi" + e + " ";
-        });
-        this.buildOption?.libPath?.forEach((e) => {
-            s += "-Fl" + e + " ";
-        });
+    }
 
-        if (this.buildOption?.unitOutputDir) {
-            let unitOutputDir = this.buildOption!.unitOutputDir;
-            // Replace variables
-            unitOutputDir = unitOutputDir.replace(/\$\{targetOS\}/g, this.buildOption?.targetOS || process.platform);
-            unitOutputDir = unitOutputDir.replace(/\$\{targetCPU\}/g, this.buildOption?.targetCPU || process.arch);
-            s += "-FU" + unitOutputDir + " ";
-        }
-
-        if (this.buildOption?.optimizationLevel) {
-            s += "-O" + this.buildOption!.optimizationLevel + " ";
-        }
-
-        if (this.buildOption?.syntaxMode) {
-            s += "-M" + this.buildOption!.syntaxMode + " ";
-        }
-        if (this.allowBuildOptionCustomOptions) {
-            this.buildOption?.customOptions?.forEach((e) => {
-                s += e + " ";
-            });
-        }
-       
-
-        return s;
+    toOptionString(): string {
+        return this.toOptionArray().join(' ');
     }
 
 }
-export class TaskInfo {
-    ischanged: boolean = false;
-    tasks: any;
-}
-
-
 export class InitializationOptions {
     //current work path
     public cwd: string | undefined;
@@ -175,7 +119,6 @@ export class InitializationOptions {
         this.fpcOptions = cfg.get<Array<string>>("fpcOptions", []);
         this.overloadPolicy = cfg.get<number>("overloadPolicy");
         this.insertCompletionsAsSnippets = cfg.get<boolean>('insertCompletionsAsSnippets');
-        this.insertCompletionsAsSnippets = cfg.get<boolean>('insertCompletionsAsSnippets');
         this.includeWorkspaceFoldersAsIncludePaths = cfg.get<boolean>('includeWorkspaceFoldersAsIncludePaths');
         this.includeWorkspaceFoldersAsUnitPaths = cfg.get<boolean>('includeWorkspaceFoldersAsUnitPaths');
         this.checkSyntax = cfg.get<boolean>('checkSyntax');
@@ -194,7 +137,7 @@ export class InitializationOptions {
             this.program = opt.file;
         }
         let fpcOptions: Array<string> = this.fpcOptions;
-        let newopt = opt.toOptionString().split(' ');
+        let newopt = opt.toOptionArray();
         newopt.forEach((s) => {
             //if (s.startsWith('-Fi') || s.startsWith('-Fu') || s.startsWith('-d') || s.startsWith('-M')) {
             if (!s.startsWith('-v')) { //-v will raise error ,hide it 

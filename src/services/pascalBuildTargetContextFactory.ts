@@ -45,8 +45,7 @@ export class PascalBuildTargetContextFactory {
     }
 
     private createLanguageServerContextFromCompileOption(option: CompileOption): LanguageServerProjectContext {
-        const fpcOptions = option.toOptionString()
-            .split(' ')
+        const fpcOptions = option.toOptionArray()
             .filter(value => value.length > 0 && !value.startsWith('-v'));
 
         return {

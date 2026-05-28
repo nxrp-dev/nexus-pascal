@@ -13,7 +13,7 @@ Nexus Pascal 扩展提供了多种可在 VS Code 设置中配置的选项：
 ## 语言服务器设置
 设置项 | 类型 | 描述 |
 --------|------|-------------|
-`nexusPascal.pasls.path` | string | Pascal 语言服务器 (pasls) 文件位置
+`nexusPascal.languageServer.executablePath` | string | 要启动的语言服务器可执行文件完整路径。设置为 `NexusLS.exe`/`nexusls` 可覆盖捆绑服务器；留空则使用捆绑服务器。
 `nexusPascal.languageServer.FPCSourceDirectory` | string | 语言服务器用于 RTL/FCL 导航的 Free Pascal 源代码目录 (例如：`C:\lazarus\fpc\3.2.2\source`, `/usr/local/share/fpcsrc`)
 `nexusPascal.lsp.trace.server` | string | 跟踪 VS Code 和 pascal 语言服务器之间的通讯信息
 `nexusPascal.lsp.initializationOptions.program` | string | 主程序文件。如果未指定，则使用当前文件

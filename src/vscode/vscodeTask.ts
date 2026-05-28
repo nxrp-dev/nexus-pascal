@@ -10,7 +10,6 @@ export { BuildMode } from './vscodeTaskTypes';
 export class FpcTask extends vscode.Task {
     private buildMode: BuildMode = BuildMode.normal;
     private readonly fpcCommandBuilder = new FpcCommandBuilder();
-    private readonly lazarusCommandBuilder = new LazarusCommandBuilder();
 
     public get BuildMode(): BuildMode {
         return this.buildMode;
@@ -27,27 +26,10 @@ export class FpcTask extends vscode.Task {
             `${name}`,
             FPC_TASK_TYPE,
             new FpcCustomExecution(async (): Promise<vscode.Pseudoterminal> => {
-                const command = taskDefinition.isLazarusProject
-                    ? await this.createLegacyLazarusCommand(cwd, name, taskDefinition)
-                    : this.fpcCommandBuilder.createCommand(cwd, file, taskDefinition, this.buildMode);
-
+                const command = this.fpcCommandBuilder.createCommand(cwd, file, taskDefinition, this.buildMode);
                 return new BuildTaskTerminal(command);
             })
         );
-    }
-
-    private async createLegacyLazarusCommand(
-        cwd: string,
-        name: string,
-        taskDefinition: FpcTaskDefinition
-    ) {
-        const lazarusDefinition = new LazarusTaskDefinition();
-        lazarusDefinition.project = taskDefinition.lazarusProjectFile || taskDefinition.file;
-        lazarusDefinition.cwd = taskDefinition.cwd;
-        lazarusDefinition.buildMode = taskDefinition.buildMode || name;
-        lazarusDefinition.forceRebuild = this.buildMode === BuildMode.rebuild;
-
-        return this.lazarusCommandBuilder.createCommand(cwd, name, lazarusDefinition, this.buildMode);
     }
 }
 

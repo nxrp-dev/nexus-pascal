@@ -6,12 +6,7 @@ import { FPC_TASK_TYPE, LAZARUS_TASK_TYPE } from './vscodeTaskTypes';
 
 export class FpcTaskProvider implements vscode.TaskProvider {
     static FpcTaskType = FPC_TASK_TYPE;
-    private defineMap: Map<string, FpcTaskDefinition> = new Map<string, FpcTaskDefinition>();
     public taskMap: Map<string, vscode.Task> = new Map<string, vscode.Task>();
-
-    public GetTaskDefinition(name: string): FpcTaskDefinition | undefined {
-        return this.defineMap.get(name);
-    }
 
     constructor(
         private workspaceRoot: string,
@@ -20,8 +15,7 @@ export class FpcTaskProvider implements vscode.TaskProvider {
     ) {
     }
 
-    public async clean() {
-        this.defineMap.clear();
+    public clean(): void {
         this.taskMap.clear();
     }
 
@@ -35,6 +29,10 @@ export class FpcTaskProvider implements vscode.TaskProvider {
         }
 
         const definition = _task.definition;
+        const file = definition.file;
+        if (!file) {
+            return undefined;
+        }
 
         if (this.taskMap.has(_task.name)) {
             const task = this.taskMap.get(_task.name);
@@ -53,7 +51,7 @@ export class FpcTaskProvider implements vscode.TaskProvider {
             }
         }
 
-        const task = this.getTask(_task.name, definition.file, definition);
+        const task = this.getTask(_task.name, file, definition);
         this.taskMap.set(_task.name, task);
         return task;
     }
@@ -62,9 +60,8 @@ export class FpcTaskProvider implements vscode.TaskProvider {
         return [];
     }
 
-    public getTask(name: string, file?: string, definition?: FpcTaskDefinition): vscode.Task {
-        this.defineMap.set(name, definition!);
-        return new FpcTask(this.cwd ? this.cwd : this.workspaceRoot, name, file!, definition!);
+    public getTask(name: string, file: string, definition: FpcTaskDefinition): vscode.Task {
+        return new FpcTask(this.cwd ? this.cwd : this.workspaceRoot, name, file, definition);
     }
 
     public notifyTaskConfigurationChanged(): void {

@@ -21,7 +21,7 @@
     "config.toolchain.lazarusDirectory": "Lazarus installation directory. Example: `C:\\lazarus` or `/usr/local/share/lazarus`.",
     "config.toolchain.targetOS": "Default Free Pascal target operating system. Example: `win64`, `win32`, `linux`, or `darwin`.",
     "config.toolchain.targetCPU": "Default Free Pascal target CPU. Example: `x86_64`, `i386`, or `aarch64`.",
-    "config.languageServer.executablePath": "Pascal Language Server executable path. Leave empty to use the bundled language server.",
+    "config.languageServer.executablePath": "Full path to the language server executable to launch. Set this to NexusLS.exe/nexusls to override the bundled server; leave empty to use the bundled server.",
     "config.languageServer.fpcSourceDirectory": "Free Pascal source directory used by the language server for RTL/FCL navigation. [Select folder...](command:nexusPascal.languageServer.selectFpcSourceDirectory) Example: `C:\\lazarus\\fpc\\3.2.2\\source` or `/usr/local/share/fpcsrc`.",
     "config.languageServer.trace.server": "Trace communication between VS Code and pascal language server.",
     "config.languageServer.initializationOptions.program": "Main program file. If not specified, uses current file.",

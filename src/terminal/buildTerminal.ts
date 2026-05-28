@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { TerminalEscape, TE_Style } from '../common/escape';
 import { buildDiagnostics } from '../services/diagnosticsService';
+import { FpcOutputParser } from './fpcOutputParser';
 
 export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode.TerminalExitStatus {
     private writeEmitter = new vscode.EventEmitter<string>();
@@ -14,15 +15,13 @@ export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode
     protected process?: ChildProcess.ChildProcess;
     protected buffer: string = "";
     protected errbuf: string = "";
-    protected currentFile: string = "";
+    protected parser?: FpcOutputParser;
 
-    protected diagMaps: Map<string, vscode.Diagnostic[]>;
     public args: string[] = [];
     reason: vscode.TerminalExitReason = vscode.TerminalExitReason.Unknown;
     code: number | undefined;
 
     constructor(protected cwd: string, protected fpcpath: string) {
-        this.diagMaps = new Map<string, vscode.Diagnostic[]>();
         this.onDidClose((e) => {});
     }
 
@@ -39,8 +38,7 @@ export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode
     protected async doBuild(): Promise<number> {
         this.buffer = "";
         this.errbuf = "";
-        this.currentFile = "";
-        this.diagMaps.clear();
+        this.parser = new FpcOutputParser(this.cwd, this.args);
 
         this.createOutputDirectories();
 
@@ -86,22 +84,10 @@ export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode
         buildDiagnostics.clear();
         let has_error: boolean = false;
 
-        for (const iter of this.diagMaps) {
+        for (const iter of this.parser?.diagnostics ?? []) {
             const key = iter[0];
             const item = iter[1];
-            let uri: vscode.Uri | undefined = undefined;
-
-            if (fs.existsSync(key)) {
-                uri = vscode.Uri.file(key);
-            } else {
-                uri = this.findFile(key);
-            }
-
-            if (uri) {
-                buildDiagnostics.set(uri, item);
-            } else {
-                buildDiagnostics.set(vscode.Uri.file(key), item);
-            }
+            buildDiagnostics.set(vscode.Uri.file(key), item);
 
             if (!has_error) {
                 item.forEach((d) => {
@@ -117,153 +103,21 @@ export abstract class BaseBuildTerminal implements vscode.Pseudoterminal, vscode
         }
     }
 
-    protected findFile(filename: string): vscode.Uri | undefined {
-        const candidates = this.getFileResolutionCandidates(filename);
-
-        for (const candidate of candidates) {
-            if (fs.existsSync(candidate)) {
-                return vscode.Uri.file(candidate);
-            }
-        }
-
-        return undefined;
-    }
-
-    private getFileResolutionCandidates(filename: string): string[] {
-        const candidates: string[] = [];
-        const addCandidate = (candidate: string) => {
-            if (!candidates.includes(candidate)) {
-                candidates.push(candidate);
-            }
-        };
-
-        if (path.isAbsolute(filename)) {
-            addCandidate(filename);
-            return candidates;
-        }
-
-        addCandidate(path.join(this.cwd, filename));
-
-        if (this.currentFile) {
-            addCandidate(path.join(path.dirname(this.currentFile), filename));
-        }
-
-        for (const searchRoot of this.getCompilerSearchRoots()) {
-            addCandidate(path.join(searchRoot, filename));
-        }
-
-        return candidates;
-    }
-
-    private getCompilerSearchRoots(): string[] {
-        const roots: string[] = [];
-        const addRoot = (root: string) => {
-            const resolvedRoot = path.isAbsolute(root) ? root : path.join(this.cwd, root);
-            if (!roots.includes(resolvedRoot)) {
-                roots.push(resolvedRoot);
-            }
-        };
-
-        for (const arg of this.args) {
-            if (arg.startsWith('-Fu') || arg.startsWith('-Fi')) {
-                const rawRoot = arg.substring(3).trim();
-                if (rawRoot) {
-                    addRoot(rawRoot);
-                }
-            }
-        }
-
-        return roots;
-    }
-
     protected parseFpcStyleError(line: string): boolean {
-        // Match "Compiling /path/to/file.pas" to establish context
-        // Support optional message ID prefix like (3104) Compiling ... or 3104) Compiling ...
-        const compileMatch = line.match(/^(?:\(?\d+\)?\s+)?Compiling\s+(.*)/);
-        if (compileMatch) {
-            this.currentFile = compileMatch[1].trim();
+        const parsedLine = this.parser?.parseLine(line);
+        if (!parsedLine?.handled) {
+            return false;
+        }
+
+        if (parsedLine.severity === vscode.DiagnosticSeverity.Error) {
+            this.emit(TerminalEscape.apply({ msg: line, style: [TE_Style.Red] }));
+        } else if (parsedLine.severity !== undefined) {
+            this.emit(TerminalEscape.apply({ msg: line, style: [TE_Style.Cyan] }));
+        } else {
             this.emit(line);
-            return true;
         }
 
-        const reg = /^(([-:\w\\\/]+)\.(p|pp|pas|lpr|dpr|inc))\(((\d+)(\,(\d+))?)\)\s(Fatal|Error|Warning|Note|Hint): \((\d+)\) (.*)/;
-        const matches = reg.exec(line);
-
-        if (matches) {
-            const ln = Number(matches[5]);
-            const col = Number(matches[7]) || 1;
-            let file = matches[1];
-            const level = matches[8];
-            const msgcode = matches[9];
-            const msg = matches[10];
-
-            // If the file in error is just a filename and matches our current context's basename,
-            // or if it's a relative path, try to use the currentFile context.
-            if (!path.isAbsolute(file)) {
-                if (this.currentFile && path.basename(this.currentFile) === path.basename(file)) {
-                    file = this.currentFile;
-                } else {
-                    // Try to find it relative to the current file being compiled
-                    if (this.currentFile) {
-                        const dir = path.dirname(this.currentFile);
-                        const suspectedPath = path.join(dir, file);
-                        if (fs.existsSync(suspectedPath)) {
-                            file = suspectedPath;
-                        } else {
-                            const uri = this.findFile(file);
-                            if (uri) {
-                                file = uri.fsPath;
-                            }
-                        }
-                    } else {
-                        const uri = this.findFile(file);
-                        if (uri) {
-                            file = uri.fsPath;
-                        }
-                    }
-                }
-            }
-
-            const diag = new vscode.Diagnostic(
-                new vscode.Range(new vscode.Position(ln - 1, col - 1), new vscode.Position(ln - 1, col - 1)),
-                msg,
-                this.getDiagnosticSeverity(level)
-            );
-            diag.code = Number.parseInt(msgcode);
-
-            const fileKey = file; // Use the best path we have as the key
-            if (this.diagMaps?.has(fileKey)) {
-                this.diagMaps.get(fileKey)?.push(diag);
-            } else {
-                this.diagMaps.set(fileKey, [diag]);
-            }
-
-            if (diag.severity === vscode.DiagnosticSeverity.Error) {
-                this.emit(TerminalEscape.apply({ msg: line, style: [TE_Style.Red] }));
-            } else {
-                this.emit(TerminalEscape.apply({ msg: line, style: [TE_Style.Cyan] }));
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    protected getDiagnosticSeverity(level: string): vscode.DiagnosticSeverity {
-        switch (level) {
-            case 'Fatal':
-            case 'Error':
-                return vscode.DiagnosticSeverity.Error;
-            case 'Warning':
-                return vscode.DiagnosticSeverity.Warning;
-            case 'Note':
-                return vscode.DiagnosticSeverity.Information;
-            case 'Hint':
-                return vscode.DiagnosticSeverity.Hint;
-            default:
-                return vscode.DiagnosticSeverity.Information;
-        }
+        return true;
     }
 
     public emit(msg: string) {
