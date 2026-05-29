@@ -1,5 +1,4 @@
 {
-    "project.newproject": "New Project...",
     "task.file": "Free Pascal project file. (.lpr,.dpr)",
     "task.cwd": "Current working directory. If not set, defaults to vscode workspace directory.",
     "task.buildOption.targetOS": "Target operating system (-T)",
@@ -42,6 +41,7 @@
     "project.newFpcProject": "New Free Pascal Project...",
     "project.newLazarusProject": "New Lazarus Project...",
     "project.newNexusProject": "New Nexus Project...",
+    "project.createTestModule": "Create NexusTest Module...",
     "config.project.templateDirectories": "Custom directories to search for project templates. Can be absolute paths or relative to workspace root.",
     "languageServer.selectFpcSourceDirectory": "Select Free Pascal Source Directory"
 }

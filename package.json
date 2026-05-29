@@ -104,11 +104,6 @@
     ],
     "commands": [
       {
-        "command": "nexusPascal.project.newproject",
-        "title": "%project.newproject%",
-        "icon": "$(add)"
-      },
-      {
         "command": "nexusPascal.project.newFpcProject",
         "title": "%project.newFpcProject%",
         "category": "Nexus Pascal"
@@ -124,11 +119,25 @@
         "category": "Nexus Pascal"
       },
       {
+        "command": "nexusPascal.project.createTestModule",
+        "title": "%project.createTestModule%",
+        "category": "Nexus Pascal"
+      },
+      {
         "command": "nexusPascal.languageServer.selectFpcSourceDirectory",
         "title": "%languageServer.selectFpcSourceDirectory%",
         "category": "Nexus Pascal"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "nexusPascal.project.createTestModule",
+          "when": "resourceExtname == .lpi",
+          "group": "nexusPascal@10"
+        }
+      ]
+    },
     "keybindings": [
       {
         "key": "ctrl+shift+down",

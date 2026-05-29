@@ -1,3 +1,5 @@
+import { WizardRequest } from '../wizard/wizardTypes';
+
 export type ProjectCreationKind = 'fpc' | 'lazarus' | 'nexus';
 
 export interface ProjectCreationTemplateOption {
@@ -7,7 +9,7 @@ export interface ProjectCreationTemplateOption {
     sourcePath?: string;
 }
 
-export interface ProjectCreationRequest {
+export interface ProjectCreationRequest extends WizardRequest {
     kind: ProjectCreationKind;
     templateId?: string;
     projectName: string;

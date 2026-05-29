@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ExtensionPaths } from '../services/extensionPaths';
-import { WorkspaceTasksService } from '../services/workspaceTasksService';
 
 export interface ProjectTemplate {
     name: string;
@@ -19,13 +18,13 @@ export class ProjectTemplateManager {
     private static readonly StarterRoot = 'templates';
     private static readonly ProjectNameToken = '%PROJECT_NAME%';
     private static readonly IgnoredTemplateFiles = new Set(['template.json']);
+    private static readonly IgnoredTemplateDirectories = new Set(['.vscode']);
     public static readonly FreePascalCategory = 'FreePascal-Projects';
     public static readonly LazarusCategory = 'Lazarus-Projects';
 
     constructor(
         private readonly workspaceRoot: string,
-        private readonly extensionPaths: ExtensionPaths,
-        private readonly workspaceTasks: WorkspaceTasksService
+        private readonly extensionPaths: ExtensionPaths
     ) {
     }
 
@@ -152,10 +151,6 @@ export class ProjectTemplateManager {
         const lCollisions: string[] = [];
 
         this.walkFiles(ASourceDir, (ASourceFile, ARelativePath) => {
-            if (this.isMergeableWorkspaceFile(ARelativePath)) {
-                return;
-            }
-
             const lTargetPath = path.join(ATargetDir, this.applyProjectName(ARelativePath, AProjectName));
 
             if (fs.existsSync(lTargetPath)) {
@@ -171,16 +166,6 @@ export class ProjectTemplateManager {
             const lTargetPath = path.join(ATargetDir, this.applyProjectName(ARelativePath, AProjectName));
             fs.mkdirSync(path.dirname(lTargetPath), { recursive: true });
 
-            if (this.isWorkspaceTasksFile(ARelativePath)) {
-                this.mergeWorkspaceJson(ASourceFile, lTargetPath, AProjectName, 'tasks', 'label', this.prepareTaskForMerge);
-                return;
-            }
-
-            if (this.isWorkspaceLaunchFile(ARelativePath)) {
-                this.mergeWorkspaceJson(ASourceFile, lTargetPath, AProjectName, 'configurations', 'name');
-                return;
-            }
-
             if (this.isTextFile(ASourceFile)) {
                 const lContent = fs.readFileSync(ASourceFile, 'utf8');
                 fs.writeFileSync(lTargetPath, this.applyProjectName(lContent, AProjectName), 'utf8');
@@ -191,71 +176,6 @@ export class ProjectTemplateManager {
         });
     }
 
-    private mergeWorkspaceJson(
-        ASourceFile: string,
-        ATargetFile: string,
-        AProjectName: string,
-        AArrayName: 'tasks' | 'configurations',
-        AKeyName: 'label' | 'name',
-        APrepareItem?: (AExistingItems: any[], ANewItem: any) => any
-    ): void {
-        const lSourceJson = this.readStarterJsonFile(ASourceFile, AProjectName);
-        const lSourceItems = Array.isArray(lSourceJson[AArrayName]) ? lSourceJson[AArrayName] : [];
-        const lTargetJson = fs.existsSync(ATargetFile)
-            ? this.readJsonFile(ATargetFile)
-            : this.createWorkspaceJson(AArrayName);
-
-        const lTargetItems = Array.isArray(lTargetJson[AArrayName]) ? lTargetJson[AArrayName] : [];
-
-        for (const lSourceItem of lSourceItems) {
-            const lPreparedItem = APrepareItem ? APrepareItem(lTargetItems, lSourceItem) : lSourceItem;
-            const lKey = lPreparedItem[AKeyName];
-            const lExistingIndex = lTargetItems.findIndex((AItem: any) => AItem[AKeyName] === lKey);
-
-            if (lExistingIndex >= 0) {
-                lTargetItems[lExistingIndex] = lPreparedItem;
-            } else {
-                lTargetItems.push(lPreparedItem);
-            }
-        }
-
-        lTargetJson[AArrayName] = lTargetItems;
-        fs.writeFileSync(ATargetFile, JSON.stringify(lTargetJson, null, 4) + '\n', 'utf8');
-    }
-
-    private readStarterJsonFile(AFileName: string, AProjectName: string): any {
-        const lContent = fs.readFileSync(AFileName, 'utf8');
-        return JSON.parse(this.applyProjectName(lContent, AProjectName));
-    }
-
-    private readJsonFile(AFileName: string): any {
-        const lContent = fs.readFileSync(AFileName, 'utf8');
-        return JSON.parse(lContent);
-    }
-
-    private createWorkspaceJson(AArrayName: 'tasks' | 'configurations'): any {
-        if (AArrayName === 'tasks') {
-            return { version: '2.0.0', tasks: [] };
-        }
-
-        return { version: '0.2.0', configurations: [] };
-    }
-
-    private prepareTaskForMerge = (AExistingTasks: any[], ANewTask: any): any => {
-        if (!this.workspaceTasks.hasDefaultBuildTask(AExistingTasks) || !this.workspaceTasks.isDefaultBuildTask(ANewTask)) {
-            return ANewTask;
-        }
-
-        const lTask = { ...ANewTask };
-
-        if (typeof lTask.group === 'object') {
-            lTask.group = { ...lTask.group };
-            delete lTask.group.isDefault;
-        }
-
-        return lTask;
-    };
-
     private walkFiles(ARootDir: string, ACallback: (ASourceFile: string, ARelativePath: string) => void): void {
         this.walkFilesFrom(ARootDir, ARootDir, ACallback);
     }
@@ -265,7 +185,9 @@ export class ProjectTemplateManager {
             const lSourcePath = path.join(ACurrentDir, lEntry.name);
 
             if (lEntry.isDirectory()) {
-                this.walkFilesFrom(ARootDir, lSourcePath, ACallback);
+                if (!this.isIgnoredTemplateDirectory(lEntry.name)) {
+                    this.walkFilesFrom(ARootDir, lSourcePath, ACallback);
+                }
                 continue;
             }
 
@@ -322,24 +244,12 @@ export class ProjectTemplateManager {
         return AValue.split(ProjectTemplateManager.ProjectNameToken).join(AProjectName);
     }
 
-    private isMergeableWorkspaceFile(ARelativePath: string): boolean {
-        return this.isWorkspaceTasksFile(ARelativePath) || this.isWorkspaceLaunchFile(ARelativePath);
-    }
-
-    private isWorkspaceTasksFile(ARelativePath: string): boolean {
-        return this.normalizeRelativePath(ARelativePath) === '.vscode/tasks.json';
-    }
-
-    private isWorkspaceLaunchFile(ARelativePath: string): boolean {
-        return this.normalizeRelativePath(ARelativePath) === '.vscode/launch.json';
-    }
-
-    private normalizeRelativePath(ARelativePath: string): string {
-        return ARelativePath.split(path.sep).join('/');
-    }
-
     private isIgnoredTemplateFile(AFileName: string): boolean {
         return ProjectTemplateManager.IgnoredTemplateFiles.has(AFileName.toLowerCase());
+    }
+
+    private isIgnoredTemplateDirectory(ADirectoryName: string): boolean {
+        return ProjectTemplateManager.IgnoredTemplateDirectories.has(ADirectoryName.toLowerCase());
     }
 
     private isTextFile(AFilePath: string): boolean {

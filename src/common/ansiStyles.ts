@@ -1,4 +1,4 @@
-//https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html#8-colors
+// https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html#8-colors
 
 export enum TE_Style {
     Black = '\u001b[30m',

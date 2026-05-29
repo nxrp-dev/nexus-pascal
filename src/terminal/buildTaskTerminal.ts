@@ -1,6 +1,6 @@
 import * as ChildProcess from 'child_process';
 import { BuildCommand, formatBuildCommand } from '../build/buildCommand';
-import { TerminalEscape, TE_Style } from '../common/escape';
+import { TerminalEscape, TE_Style } from '../common/ansiStyles';
 import { BaseBuildTerminal } from './buildTerminal';
 
 export class BuildTaskTerminal extends BaseBuildTerminal {

@@ -70,7 +70,6 @@ export class NexusPascalExtension implements vscode.Disposable {
         const commandManager = new FpcCommandManager(
             workspaceRoot,
             extensionPaths,
-            workspaceTasks,
             languageClient
         );
         const editorIntegrationService = new EditorIntegrationService(() => languageClient.current, logger);
