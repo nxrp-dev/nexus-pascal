@@ -9,21 +9,18 @@ export interface ProjectTemplate {
     sourcePath: string;
 }
 
-interface StarterNode {
+interface ProjectTemplateNode {
     name: string;
     sourcePath: string;
     isStarter: boolean;
-}
-
-interface StarterPickItem extends vscode.QuickPickItem {
-    node?: StarterNode;
-    goBack?: boolean;
 }
 
 export class ProjectTemplateManager {
     private static readonly StarterRoot = 'templates';
     private static readonly ProjectNameToken = '%PROJECT_NAME%';
     private static readonly IgnoredTemplateFiles = new Set(['template.json']);
+    public static readonly FreePascalCategory = 'FreePascal-Projects';
+    public static readonly LazarusCategory = 'Lazarus-Projects';
 
     constructor(
         private readonly workspaceRoot: string,
@@ -32,64 +29,60 @@ export class ProjectTemplateManager {
     ) {
     }
 
-    public async selectTemplate(): Promise<ProjectTemplate | undefined> {
-        const lStarterRoot = this.getStarterRoot();
+    public async createNexusProject(AProjectName: string, ATargetDir?: string): Promise<void> {
+        const lTargetDir = ATargetDir || this.workspaceRoot;
+        const lProjectName = AProjectName || 'newproject';
+        const lTargetPath = path.join(lTargetDir, 'nexus.project.json');
 
-        if (!lStarterRoot) {
-            vscode.window.showWarningMessage('Nexus Pascal starter folder was not found.');
-            return undefined;
+        if (fs.existsSync(lTargetPath)) {
+            const lChoice = await vscode.window.showWarningMessage(
+                'nexus.project.json already exists. Overwrite it?',
+                'Overwrite',
+                'Cancel'
+            );
+
+            if (lChoice !== 'Overwrite') {
+                return;
+            }
         }
 
-        let lCurrentPath = lStarterRoot;
+        const lContent = {
+            name: lProjectName
+        };
+        fs.writeFileSync(lTargetPath, JSON.stringify(lContent, null, 4) + '\n', 'utf8');
 
-        while (true) {
-            const lItems = this.getPickItems(lStarterRoot, lCurrentPath);
-
-            if (lCurrentPath !== lStarterRoot) {
-                lItems.unshift({ label: '$(arrow-left) Back', goBack: true });
-            }
-
-            if (lItems.length === 0) {
-                vscode.window.showInformationMessage('No project starters were found in this category.');
-                return undefined;
-            }
-
-            const lSelected = await vscode.window.showQuickPick(lItems, {
-                placeHolder: this.getPickerTitle(lStarterRoot, lCurrentPath)
-            });
-
-            if (!lSelected) {
-                return undefined;
-            }
-
-            if (lSelected.goBack) {
-                lCurrentPath = path.dirname(lCurrentPath);
-                continue;
-            }
-
-            if (!lSelected.node) {
-                return undefined;
-            }
-
-            if (lSelected.node.isStarter) {
-                return {
-                    name: lSelected.node.name,
-                    sourcePath: lSelected.node.sourcePath
-                };
-            }
-
-            lCurrentPath = lSelected.node.sourcePath;
-        }
+        const lDocument = await vscode.workspace.openTextDocument(lTargetPath);
+        await vscode.window.showTextDocument(lDocument, vscode.ViewColumn.One);
+        vscode.window.showInformationMessage(`Nexus project created: ${lProjectName}`);
     }
 
-    public async getAvailableTemplates(): Promise<ProjectTemplate[]> {
+    public async getAvailableTemplatesFromCategory(ACategoryName: string): Promise<ProjectTemplate[]> {
         const lStarterRoot = this.getStarterRoot();
 
         if (!lStarterRoot) {
             return [];
         }
 
-        return this.findStarters(lStarterRoot);
+        const lCategoryPath = path.join(lStarterRoot, ACategoryName);
+        if (!fs.existsSync(lCategoryPath) || !fs.statSync(lCategoryPath).isDirectory()) {
+            return [];
+        }
+
+        return this.findStarters(lCategoryPath);
+    }
+
+    public getPlannedFiles(ATemplate: ProjectTemplate, AProjectName: string): string[] {
+        const lFiles: string[] = [];
+
+        this.walkFiles(ATemplate.sourcePath, (_ASourceFile, ARelativePath) => {
+            lFiles.push(this.applyProjectName(ARelativePath, AProjectName));
+        });
+
+        return lFiles.sort((ALeft, ARight) => ALeft.localeCompare(ARight));
+    }
+
+    public getCollisions(ATemplate: ProjectTemplate, ATargetDir: string, AProjectName: string): string[] {
+        return this.findCollisions(ATemplate.sourcePath, ATargetDir, AProjectName);
     }
 
     public async createProjectFromTemplate(ATemplate: ProjectTemplate, AProjectName?: string, ATargetDir?: string): Promise<void> {
@@ -119,18 +112,7 @@ export class ProjectTemplateManager {
         return fs.existsSync(lStarterRoot) && fs.statSync(lStarterRoot).isDirectory() ? lStarterRoot : undefined;
     }
 
-    private getPickItems(AStarterRoot: string, ACurrentPath: string): StarterPickItem[] {
-        return this.getChildNodes(ACurrentPath)
-            .sort((ALeft, ARight) => this.compareNodes(ALeft, ARight))
-            .map((ANode) => ({
-                label: ANode.name,
-                description: ANode.isStarter ? 'Starter' : 'Category',
-                detail: this.getRelativeFriendlyPath(AStarterRoot, ANode.sourcePath),
-                node: ANode
-            }));
-    }
-
-    private getChildNodes(ADirectory: string): StarterNode[] {
+    private getChildNodes(ADirectory: string): ProjectTemplateNode[] {
         return fs.readdirSync(ADirectory, { withFileTypes: true })
             .filter((AEntry) => AEntry.isDirectory())
             .map((AEntry) => {
@@ -312,14 +294,6 @@ export class ProjectTemplateManager {
         await vscode.window.showTextDocument(lDocument, vscode.ViewColumn.One);
     }
 
-    private compareNodes(ALeft: StarterNode, ARight: StarterNode): number {
-        if (ALeft.isStarter !== ARight.isStarter) {
-            return ALeft.isStarter ? 1 : -1;
-        }
-
-        return ALeft.name.localeCompare(ARight.name);
-    }
-
     private comparePascalFiles(ALeft: string, ARight: string): number {
         const lLeftIsProgram = this.isProgramFile(ALeft);
         const lRightIsProgram = this.isProgramFile(ARight);
@@ -334,28 +308,6 @@ export class ProjectTemplateManager {
     private isProgramFile(AFilePath: string): boolean {
         const lExtension = path.extname(AFilePath).toLowerCase();
         return lExtension === '.lpr' || lExtension === '.dpr';
-    }
-
-    private getPickerTitle(AStarterRoot: string, ACurrentPath: string): string {
-        const lRelativePath = path.relative(AStarterRoot, ACurrentPath);
-
-        if (!lRelativePath) {
-            return 'Select a project starter category';
-        }
-
-        return `Select from ${this.toFriendlyPath(lRelativePath)}`;
-    }
-
-    private getRelativeFriendlyPath(AStarterRoot: string, APath: string): string {
-        return this.toFriendlyPath(path.relative(AStarterRoot, APath));
-    }
-
-    private toFriendlyPath(APath: string): string {
-        return APath
-            .split(path.sep)
-            .filter((APart) => APart.length > 0)
-            .map((APart) => this.toFriendlyName(APart))
-            .join(' / ');
     }
 
     private toFriendlyName(AValue: string): string {

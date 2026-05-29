@@ -120,9 +120,19 @@
         "icon": "$(link-external)"
       },
       {
-        "command": "nexusPascal.project.newfromtemplate",
-        "title": "%project.newfromtemplate%",
-        "icon": "$(file-add)"
+        "command": "nexusPascal.project.newFpcProject",
+        "title": "%project.newFpcProject%",
+        "category": "Nexus Pascal"
+      },
+      {
+        "command": "nexusPascal.project.newLazarusProject",
+        "title": "%project.newLazarusProject%",
+        "category": "Nexus Pascal"
+      },
+      {
+        "command": "nexusPascal.project.newNexusProject",
+        "title": "%project.newNexusProject%",
+        "category": "Nexus Pascal"
       },
       {
         "command": "nexusPascal.languageServer.selectFpcSourceDirectory",
